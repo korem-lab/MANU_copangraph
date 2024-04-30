@@ -1,0 +1,416 @@
+import random
+import sys
+import os
+import re
+import pandas as pd
+import numpy as np
+import scipy.stats
+import seaborn as sns
+from matplotlib import pyplot as plt
+from matplotlib.pyplot import figure
+from itertools import combinations
+
+#import evaluation.utils.constants as constants
+
+ABD_THRESH = 0.05
+
+
+def complexity_plot(fpath, depth, tool, cat):
+    plt.clf()
+    fig = plt.figure(figsize=(4,4))
+    data = pd.read_csv(fpath)
+    tools = {t for t in data.assembler if 'COMET' in t}
+    tools.add(f'{tool}-graph')
+    tools = sorted(list({t for t in tools if tool in t}))
+    filt = data.assembler.isin(tools) & (data.depth == depth)
+    data = data.loc[filt, :]
+    sns.boxplot(data=data, x=data.assembler, y=data[cat], order=tools)
+    ax = sns.stripplot(data=data, x=data.assembler, y=data[cat], order=tools, color='black', jitter=True)
+    ax.set_ylabel(f'{cat}')
+    ax.set_title(f'{cat} at increasing homology with {depth} reads')
+    ax.set(xticklabels=[])
+    plt.xticks(rotation=45)
+    #plt.tight_layout()
+    plt.savefig(f'./{cat}_{depth}_{tool}_complexity.pdf', dpi=1400, bbox_inches='tight')
+    plt.show()
+
+
+def resource_plot(data, resource):
+    plt.clf()
+    figure(figsize=(4, 4))
+    data = data.sort_values(by=['num_samples', 'tool'])
+    print(data)
+    _resource = 'rss (GB)' if resource == 'rss' else 'time (min)'
+    ax = sns.lineplot(x=data.num_samples.astype(int), y=data[_resource], hue=data.tool.astype(str), estimator='median', legend=True, ci=None)
+    sns.scatterplot(x=data.num_samples.astype(int), y=data[_resource], hue=data.tool.astype(str), legend=False, ax=ax)
+    plt.ylabel(resource)
+    plt.xlabel('N samples')
+    plt.tight_layout()
+    plt.savefig(f'./{resource}_benchmark.pdf', dpi=1400, bbox_inches='tight')
+    plt.show()
+
+
+#def construct_evaluation_dataframe(dataset, analysis, platform, prefix=''):
+#    """
+#    Concatenates results dataframes from all relevant evaluations
+#    """
+#
+#    evals = list()
+#    # construct the keys
+#    for ds in constants.DATASETS:
+#
+#        # Skip over irrelevant datasets
+#        if not ds.startswith(dataset):
+#            continue
+#
+#        for depth in constants.DEPTHS:
+#            key = constants.make_key(ds, depth)
+#            eval_path = constants.analysis_path(key, analysis, platform)
+#            evals.append(os.path.join(eval_path, f'{key}{prefix}results.csv'))
+#        print(evals)
+#    return pd.concat([pd.read_csv(e) for e in evals if os.path.exists(e)])
+
+
+def compute_metric(metric, df):
+
+    def precision(df):
+        total = (df[df.metric == 'cnx_tp'].value.sum() + df[df.metric == 'cnx_fp'].value.sum())
+        if total == 0:
+            return 1
+        return df[df.metric == 'cnx_tp'].value.sum() / total
+
+    def recall(df):
+        total = (df[df.metric == 'cnx_tp'].value.sum() + df[df.metric == 'cnx_fn'].value.sum())
+        if total == 0:
+            return 0
+        return df[df.metric == 'cnx_tp'].value.sum() / total
+
+    def cov_precision(df):
+        total = (df[df.metric == 'cov_tp'].value.sum() + df[df.metric == 'cov_fp'].value.sum())
+        if total == 0:
+            return 1
+        return df[df.metric == 'cov_tp'].value.sum() / total
+
+    def cov_recall(df):
+        total = (df[df.metric == 'cov_tp'].value.sum() + df[df.metric == 'cov_fn'].value.sum())
+        if total == 0:
+            return 0
+        return df[df.metric == 'cov_tp'].value.sum() / total
+
+    if metric == 'cnx_F-score':
+        p = precision(df)
+        r = recall(df)
+        return (2*p*r / (p + r)) if (p+r) > 0 else 0
+    elif metric == 'cnx_precision':
+        return precision(df)
+    elif metric == 'cnx_recall':
+        return recall(df)
+    elif metric == 'cov_F-score':
+        p = cov_precision(df)
+        r = cov_recall(df)
+        return (2*p*r / (p + r)) if (p+r) > 0 else 0
+    elif metric == 'cov_precision':
+        return cov_precision(df)
+    elif metric == 'cov_recall':
+        return cov_recall(df)
+    else:
+        sys.exit(-1)
+
+
+def construct_distribution_of_single_metric_across_datasets(metric, raw_data):
+    # ensure inputs are valid
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
+
+    groupings = ['depth', 'assembler', 'dataset']
+    columns = ['depth', 'assembler', 'dataset', 'value']
+
+    # group the table
+    groups = raw_data.groupby(groupings)
+
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=columns)
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+
+    return scores
+
+
+def plot_distribution_of_single_metric_across_datasets(data, y_label, fig_name, x_label='assembler', dpi=1400):
+    plt.clf()
+    figure(figsize=(4, 4))
+    ax = sns.boxplot(x=data.assembler, y=data.value, showfliers=False)
+    sns.stripplot(x=data.assembler, y=data.value, legend=False, color='black')
+    #sns.boxplot(
+    #    x=data.assembler, y=data.value,
+    #    whiskerprops={'visible': False},
+    #    showbox=False, showfliers=False,
+    #    showcaps=False, width=0.3,
+    #    linewidth=3, ax=ax
+    #)
+
+
+    plt.ylabel(y_label)
+    plt.xlabel(x_label)
+    plt.tight_layout()
+    plt.savefig(fig_name, dpi=dpi, bbox_inches='tight')
+    print(data)
+    for a in ['mcvl', 'mh_contigs', 'mh_graph']:
+        print(data.loc[data.assembler == 'copangraph', 'value'].values)
+        print(data.loc[data.assembler == a, 'value'].values)
+        print(scipy.stats.wilcoxon(
+            x=data.loc[data.assembler == 'copangraph', 'value'].values,
+            y=data.loc[data.assembler == a, 'value'].values,
+            alternative='greater'
+        ))
+
+
+
+def graph_quality_plot_depth(dataset, metric, raw_data, group_replicates=False, filter_on=None, hue_val='assembler'):
+
+    # ensure inputs are valid
+    plt.clf()
+    figure(figsize=(4, 4))
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
+
+    if group_replicates: 
+        groupings = ['depth', 'assembler']
+        columns = ['depth', 'assembler', 'value']
+    else:
+        groupings = ['depth', 'assembler', 'dataset']
+        columns = ['depth', 'assembler', 'dataset', 'value']
+    
+    # group the table
+    groups = raw_data.groupby(groupings)
+    
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=columns)
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+    # Plot line graph
+    if filter_on:
+        scores = scores.loc[scores.assembler == filter_on,:]
+    ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=False)
+    ax.set_xlabel('Read pairs')
+    ax.set_ylabel(metric)
+    ax.set_title(f'{dataset} {metric}')
+    #sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+   
+    sum_replicates = '_sum_replicates' if group_replicates else ''
+    plt.tight_layout()
+    plt.savefig(f'{dataset}_{metric}{sum_replicates}.pdf', dpi=1400, bbox_inches='tight')
+    plt.savefig(f'{dataset}_{metric}{sum_replicates}.png', dpi=800, bbox_inches='tight')
+    plt.clf()
+
+
+def graph_quality_plot_coasm(dataset_name, metric, raw_data):
+
+    # ensure inputs are valid
+    plt.clf()
+    figure(figsize=(4, 4))
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
+
+    raw_data.loc[:, 'num_samples'] = raw_data.dataset.apply(lambda x: int(re.findall('([0-9]+)_samples', x)[0]))
+
+    groupings = ['num_samples', 'assembler']
+    columns = ['num_samples', 'assembler', 'value']
+    
+    # group the table
+    groups = raw_data.groupby(groupings)
+    
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=columns)
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+
+    # Plot line graph
+    ax = sns.lineplot(x=(scores['num_samples'].astype(np.float64)), y=scores['value'], hue=scores['assembler'],legend=True)
+    ax.set_xlabel('Number of Samples')
+    ax.set_ylabel(metric)
+    ax.set_title(f'{dataset_name} {metric}')
+    #sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+   
+    plt.tight_layout()
+    plt.savefig(f'{dataset_name}_{metric}_coasm.pdf', dpi=1400, bbox_inches='tight')
+    plt.savefig(f'{dataset_name}_{metric}_coasm.png', dpi=800, bbox_inches='tight')
+    plt.clf()
+
+def build_graph_quality_by_abundance_table(metric, raw_data, group_replicates=False):
+
+    # compute the abundance quantiles. Make quantile bins of 0.1 intervals
+    bins = np.linspace(start=0, end=1, num=11)
+    quantiles = raw_data.abundance.quantile(q=bins)
+    quantiles.index = range(11)
+
+    scores = list()
+    # for each assembler...
+    for (asm, group) in raw_data.groupby(['assembler']):
+        # get the genomes with abundance in a particular quantile, compute the metric, and save in table
+        for i in range(10):
+            df = group.loc[
+                 (quantiles[i] <= raw_data.abundance) & (raw_data.abundance <= quantiles[i+1]), :
+            ]
+            num_genomes = df.shape[0]
+            score_table = pd.DataFrame(
+                index=range(num_genomes), columns=['assembler', 'quantile_lower_bound', 'quantile_upper_bound', 'genome', 'value']
+            )
+            per_genome_metrics = compute_metric(metric, df, per_genome=True)
+            score_table.assembler = [asm] * num_genomes
+            score_table.quantile_lower_bound = [bins[i]] * num_genomes
+            score_table.quantile_upper_bound = [bins[i+1]] * num_genomes
+            score_table.value = per_genome_metrics
+            scores.append(score_table)
+
+    # concatenate all the scores across assembler and abundance and plot
+
+    return pd.concat(scores)
+
+def plot_graph_quality_by_abundance_table(df, num_assemblies):
+    ax = sns.stripplot(x=df.quantile_upper_bound.astype(str), y='value', hue='assembler', data=df, dodge=True, size=2)
+    plt.xticks(rotation=45, ha="right")
+
+    # plot the mean line
+    sns.boxplot(
+        showmeans=True,
+        meanline=True,
+        meanprops={'color': 'k', 'ls': '-', 'lw': 1.5},
+        medianprops={'visible': False},
+        whiskerprops={'visible': False},
+        zorder=10,
+        x="quantile_upper_bound",
+        y="value",
+        hue='assembler',
+        data=df,
+        showfliers=False,
+        showbox=False,
+        showcaps=False,
+        ax=ax
+    )
+    handles, labels = ax.get_legend_handles_labels()
+    l = plt.legend(handles[0:num_assemblies], labels[0:num_assemblies]) #, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+    plt.tight_layout()
+    plt.xlabel('Relative Abundance')
+    plt.ylabel('Metric')
+    plt.show()
+
+
+def concatenate_results_TESTING(results_list):
+
+    with open(results_list) as f:
+        data = [pd.read_csv(l.strip()) for l in f]
+    return pd.concat(data)
+
+
+def acu_r01_copan_perfomance_code():
+    if len(sys.argv) != 3:
+        print('exe <results.csv> <abundance.csv>')
+        sys.exit()
+
+    ab = pd.read_csv(sys.argv[2]) if sys.argv[2] != 'none' else None
+    above_thresh = ab.loc[ab.abundance > ABD_THRESH, :].header
+
+    csv = pd.read_csv(sys.argv[1])
+    csv = csv[csv.genome.isin(list(above_thresh) + ['-'])]
+
+    include = ['COMET-megaHIT-95', 'megaHIT-graph', 'metaCarvel-megaHIT', 'metaSPAdes-graph']
+    csv = csv.loc[csv.tool.isin(include), :]
+    csv.tool = csv.tool.str.replace('COMET-megaHIT-95', 'COMP graph')
+    csv.tool = csv.tool.str.replace('megaHIT-graph', 'megaHIT')
+    csv.tool = csv.tool.str.replace('metaSPAdes-graph', 'metaSPAdes')
+    csv.tool = csv.tool.str.replace('metaCarvel-megaHIT', 'metaCarvel')
+    num_tools = len(csv.tool.value_counts())
+    barplot_df = pd.DataFrame(columns=['tool', 'metric', 'value'], index=range(num_tools * 12))
+
+    for i, (tool, g) in enumerate(csv.groupby(['tool'])):
+        barplot_df.iloc[12 * i + 0, :] = [tool, 'tp', g[g.metric == 'tp'].value.sum()]
+        barplot_df.iloc[12 * i + 1, :] = [tool, 'fp', g[g.metric == 'fp'].value.sum()]
+        barplot_df.iloc[12 * i + 2, :] = [tool, 'fn', g[g.metric == 'fn'].value.sum()]
+        barplot_df.iloc[12 * i + 3, :] = [tool, 'cov_tp', g[g.metric == 'cov_tp'].value.sum()]
+        barplot_df.iloc[12 * i + 4, :] = [tool, 'cov_fp', g[g.metric == 'cov_fp'].value.sum()]
+        barplot_df.iloc[12 * i + 5, :] = [tool, 'cov_fn', g[g.metric == 'cov_fn'].value.sum()]
+        barplot_df.iloc[12 * i + 6, :] = [
+            tool, 'prec', barplot_df.iloc[12 * i + 0, 2] / (barplot_df.iloc[12 * i + 0, 2] + barplot_df.iloc[12 * i + 1, 2])
+        ]
+        barplot_df.iloc[12 * i + 7, :] = [
+            tool, 'recall', barplot_df.iloc[12 * i + 0, 2] / (barplot_df.iloc[12 * i + 0, 2] + barplot_df.iloc[12 * i + 2, 2])
+        ]
+        p, r = barplot_df.iloc[12 * i + 6, 2], barplot_df.iloc[12 * i + 7, 2]
+        barplot_df.iloc[12 * i + 8, :] = [tool, 'fscore', 2*p*r / (p + r)]
+
+
+        barplot_df.iloc[12 * i + 9, :] = [
+            tool, 'cov_prec', barplot_df.iloc[12 * i + 3, 2] / (barplot_df.iloc[12 * i + 3, 2] + barplot_df.iloc[12 * i + 4, 2])
+        ]
+        barplot_df.iloc[12 * i + 10, :] = [
+            tool, 'cov_recall', barplot_df.iloc[12 * i + 3, 2] / (barplot_df.iloc[12 * i + 3, 2] + barplot_df.iloc[12 * i + 5, 2])
+        ]
+        p, r = barplot_df.iloc[12 * i + 9, 2], barplot_df.iloc[12 * i + 10, 2]
+        barplot_df.iloc[12 * i + 11, :] = [tool, 'cov_fscore', 2*p*r / (p + r)]
+
+    #connectivity_filter = (barplot_df.metric == 'fscore')
+    #coverage_filter = (barplot_df.metric == 'cov_fscore')
+
+    connectivity_filter = (
+            (barplot_df.metric == 'tp') | (barplot_df.metric == 'fp') | (barplot_df.metric == 'fn')
+    )
+    coverage_filter= (
+            (barplot_df.metric == 'cov_tp') | (barplot_df.metric == 'cov_fp') | (barplot_df.metric == 'cov_fn')
+    )
+    g = sns.catplot(data=barplot_df.loc[connectivity_filter, :], kind='bar', x='tool', y='value', hue='metric')
+    g.set_xticklabels(rotation=45, fontsize=8, ha='right')
+    ax = g.facet_axis(0,0)
+    for container in ax.containers:
+        ax.bar_label(container, fontsize=6)
+    plt.title(f'abd >= {ABD_THRESH} connectivity')
+    g.savefig(f'10G_{ABD_THRESH}_connect.updated.pdf', dpi=1400)
+    plt.show()
+    plt.clf()
+
+    g = sns.catplot(data=barplot_df.loc[coverage_filter, :], kind='bar', x='tool', y='value', hue='metric')
+    g.set_xticklabels(rotation=45, fontsize=8, ha='right')
+    ax = g.facet_axis(0,0)
+    ax.set(yscale='log')
+    #for container in ax.containers:
+    #    ax.bar_label(container, fontsize=6, fmt='%.3g')
+    plt.title(f'abd >= {ABD_THRESH} coverage')
+    g.savefig(f'10G_{ABD_THRESH}_covg.updated.pdf', dpi=1400)
+    plt.show()
+    plt.clf()
+
+
+def generate_fake_dataset():
+    assemblers = ["asm1", "asm2", "asm3", 'asm4', 'asm5', 'asm6']
+    quantiles = [i / 10 for i in range(11)]
+    genomes = ["g{}".format(i) for i in range(1, 11)]
+
+    rows = []
+
+    for assembler in assemblers:
+        for lower_bound in quantiles:
+            for upper_bound in quantiles:
+                if lower_bound >= upper_bound:
+                    continue
+
+                selected_genomes = random.sample(genomes, 5)
+                values = [random.random() for _ in range(5)]
+
+                rows.extend(zip([assembler] * 5, [lower_bound] * 5, [upper_bound] * 5, values, selected_genomes))
+
+    columns = ["assembler", "quantile_lower_bound", "quantile_upper_bound", "value", "genome"]
+    df = pd.DataFrame(rows, columns=columns)
+    return df
+
+
+if __name__ == '__main__':
+
+    test_abundance_df = generate_fake_dataset()
+    plot_graph_quality_by_abundance_table(test_abundance_df, 6)
+
