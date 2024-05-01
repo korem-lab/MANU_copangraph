@@ -19,7 +19,7 @@ if __name__ == '__main__':
     df.index = range(df.shape[0])
     #fc.resource_plot(df, 'rss')
     #fc.resource_plot(df, 'time')
-    #fc.graph_quality_plot_depth(os.path.join(sys.argv[1], f'pnp-camisim_{ASM}_glocal95_eps40'), 'cnx_F-score', df, filter_on='copangraph', hue_val='dataset')
+    fc.graph_quality_plot_depth(os.path.join(sys.argv[1], f'pnp-camisim_{ASM}_glocal95_eps40'), 'cnx_F-score', df, filter_on='copangraph', hue_val='dataset')
     #fc.graph_quality_plot_depth(os.path.join(sys.argv[1], f'pnp-camisim_{ASM}_glocal95_eps40'), 'cov_F-score', df, filter_on='copangraph', hue_val='dataset')
     #fc.graph_quality_plot_depth(os.path.join(sys.argv[1], f'pnp-camisim_{ASM}_glocal95_eps40'), 'cnx_precision', df, filter_on='copangraph', hue_val='dataset')
     #fc.graph_quality_plot_depth(os.path.join(sys.argv[1], f'pnp-camisim_{ASM}_glocal95_eps40'), 'cov_precision', df, filter_on='copangraph', hue_val='dataset')

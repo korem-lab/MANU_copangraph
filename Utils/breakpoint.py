@@ -45,8 +45,10 @@ if __name__ == '__main__':
     asms = [a for a in asms if a.assembler is not None]
     asms = {a.assembler: a for a in asms}
 
-    #complexity = compute_assembly_complexity(asms, key, dataset, n_pairs)
-    #complexity.to_csv(os.path.join(out_dir, f'{run_desc}_complexity.csv'))
+    complexity = compute_assembly_complexity(asms, key, dataset, n_pairs)
+    complexity.to_csv(os.path.join(out_dir, f'{run_desc}_complexity.csv'))
+    n50 = compute_assembly_n50(asms, key, dataset, n_pairs)
+    n50.to_csv(os.path.join(out_dir, f'{run_desc}_n50.csv'))
 
     # Build a minimap alignment object indexing the metagenomic reference genomes
     aligner = mp.Aligner(reference)
@@ -94,12 +96,13 @@ if __name__ == '__main__':
             node_to_aln_idx[aln.contig_name].add(i)
 
         # build contig map
-        contig_map = dict()
-        idx = 0
-        for node, seq in asm.contigs:
-            if node not in contig_map:
-                contig_map[node] = idx
-                idx += 1
+        contig_map = None
+        #contig_map = dict()
+        #idx = 0
+        #for node, seq in asm.contigs:
+        #    if node not in contig_map:
+        #        contig_map[node] = idx
+        #        idx += 1
 
         # get connectivity metrics
         print('Computing connectivity metrics')

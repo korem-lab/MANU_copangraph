@@ -3,42 +3,6 @@ import os
 import re
 from itertools import product
 
-CLUSTER_BASE_PATH = '/ifs/scratch/tk2829_gp/shared/Projects/COMET'
-CLUSTER_BASE_PATH_DATA = os.path.join(CLUSTER_BASE_PATH, 'data')
-CLUSTER_ANLS_PATHS = {
-    'analysis_1': os.path.join(CLUSTER_BASE_PATH, 'analysis_1'),
-    'analysis_2': os.path.join(CLUSTER_BASE_PATH, 'analysis_2'),
-    'analysis_3': os.path.join(CLUSTER_BASE_PATH, 'analysis_3'),
-    'analysis_4': os.path.join(CLUSTER_BASE_PATH, 'analysis_4')
-}
-
-AWS_BASE_PATH = '/home/ubuntu/COMET/'
-AWS_BASE_PATH_DATA = os.path.join(AWS_BASE_PATH, 'data')
-AWS_ANLS_PATHS = {
-    'analysis_1': os.path.join(AWS_BASE_PATH, 'analysis_1'),
-    'analysis_2': os.path.join(AWS_BASE_PATH, 'analysis_2'),
-    'analysis_3': os.path.join(AWS_BASE_PATH, 'analysis_3'),
-    'analysis_4': os.path.join(AWS_BASE_PATH, 'analysis_4')
-}
-
-LOCAL_BASE_PATH = '/home/izaak/data/CoPan'
-LOCAL_BASE_PATH_DATA = os.path.join(LOCAL_BASE_PATH, 'data')
-LOCAL_ANLS_PATHS = {
-    'analysis_1': os.path.join(LOCAL_BASE_PATH, 'analysis_1'),
-    'analysis_2': os.path.join(LOCAL_BASE_PATH, 'analysis_2'),
-    'analysis_3': os.path.join(LOCAL_BASE_PATH, 'analysis_3'),
-    'analysis_4': os.path.join(LOCAL_BASE_PATH, 'analysis_4')
-}
-
-DATASETS = [
-    '5G0', '5G1', '5G2', '10G0', '10G1', '10G2'
-]
-DEPTHS = [
-    '0.1', '0.5', '1', '2', '4', '8', '16', '32'
-]
-TOOLS = [
-    'ms', 'mh', 'METACARVELms', 'METACARVELmh', 'COMETms', 'COMETmh', 'METACARVELms+contigs', 'METACARVELmh+contigs'
-]
 
 depth_map = lambda x: int(float(x) * 10**6)
 

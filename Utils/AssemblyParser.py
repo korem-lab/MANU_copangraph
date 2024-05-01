@@ -13,12 +13,7 @@ class Assembly:
         self.assembler = assembler
         # get the file extension
         _, ext = os.path.splitext(assembly_file)
-
-        # Needed to construct partial evaluations when some assemblers have not finished.
-        if not os.path.exists(assembly_file):
-            print(f'Evaluation of {self.assembler} failed. Assembly file does not exist', flush=True)
-            self.assembler = None
-            return
+        assert (os.path.exists(assembly_file))
 
         # parse the assembly file into an adjacency matrix and the lis of contig
         if ext == '.gfa':
