@@ -25,12 +25,18 @@ if __name__ == '__main__':
     plot.write_summary(co_nX, f'{ASM}_all_co_nX.csv')
     
     # Plot single-sample distributions 
+    # Recall boxplots across the 10 datasets for coverage connectivity
     plot.ss_recall(RESULTS_PATH, f'{ASM}_ss_recall', ss_quality)
+    # Nodes and edges boxplots across the 10 datasets
     plot.ss_complexity(RESULTS_PATH, f'{ASM}_complexity', ss_complexity)
+    # N50 / N90 boxplots
     plot.ss_nX(RESULTS_PATH, f'{ASM}_ss_nX', ss_nX)
     
-    # Plot multi-sample distributions
+    # Plot multi-sample curves
+    #  Recall boxplots for 1, 3, 5, 10-sample co-assemblies 
     plot.co_recall(RESULTS_PATH, f'{ASM}_co_recall', co_quality)
+    #  Node and edge counts for 1, 3, 5, 10-sample co-assemblies 
     plot.co_complexity(RESULTS_PATH, f'{ASM}_co_complexity', co_complexity)
+    #  N50 / N90 counts for 1, 3, 5, 10-sample co-assemblies 
     plot.co_nX(RESULTS_PATH, f'{ASM}_co_nX', co_nX)
     
