@@ -30,4 +30,4 @@ if __name__ == '__main__':
     plot.graph_complexity_by_depth(RESULTS_PATH, f'{ASM}_graph_complexity', complexity_df)
 
     # plot NX
-    plot.graph_complexity_by_depth(RESULTS_PATH, f'{ASM}_graph_complexity', nX_df)
+    plot.graph_NX_by_depth(RESULTS_PATH, f'{ASM}_graph_complexity', nX_df)

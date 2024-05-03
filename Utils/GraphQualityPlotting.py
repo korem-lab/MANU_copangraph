@@ -14,6 +14,26 @@ from itertools import combinations
 
 ABD_THRESH = 0.05
 
+def graph_quality_plot_coasm(out_dir, fname, quality_df):
+    pass
+def graph_complexity_by_depth(out_dir, fname, complexity_df):
+    pass
+def graph_NX_by_depth(out_dir, fname, nX_df):
+    pass
+def ss_recall(out_dir, fname, ss_quality):
+    pass
+def ss_complexity(out_dir, fname, ss_complexity):
+    pass
+def ss_nX(out_dir, fname, ss_nX):
+    pass
+def co_recall(out_dir, fname, co_quality):
+    pass
+def co_complexity(out_dir, fname, co_complexity):
+    pass
+def co_nX(out_dir, fname, co_nX):
+    pass
+
+
 
 def complexity_plot(fpath, depth, tool, cat):
     plt.clf()
