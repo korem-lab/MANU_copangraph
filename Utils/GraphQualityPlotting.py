@@ -14,25 +14,200 @@ from itertools import combinations
 
 ABD_THRESH = 0.05
 
-def graph_quality_plot_coasm(out_dir, fname, quality_df):
-    pass
-def graph_complexity_by_depth(out_dir, fname, complexity_df):
-    pass
-def graph_NX_by_depth(out_dir, fname, nX_df):
-    pass
-def ss_recall(out_dir, fname, ss_quality):
-    pass
-def ss_complexity(out_dir, fname, ss_complexity):
-    pass
-def ss_nX(out_dir, fname, ss_nX):
-    pass
-def co_recall(out_dir, fname, co_quality):
-    pass
-def co_complexity(out_dir, fname, co_complexity):
-    pass
-def co_nX(out_dir, fname, co_nX):
-    pass
+def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler'):
 
+    # ensure inputs are valid
+    plt.clf()
+    figure(figsize=(4, 4))
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
+
+    groupings = ['depth', 'assembler', 'dataset']
+    columns = ['depth', 'assembler', 'dataset', 'value']
+    
+    # group the table
+    groups = quality_df.groupby(groupings)
+    
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=columns)
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+    # Plot line graph
+    if filter_on:
+        scores = scores.loc[scores.assembler == filter_on,:]
+    ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True)
+    ax.set_xlabel('Read pairs')
+    ax.set_ylabel(metric)
+    ax.set_title(f'{fname} {metric}')
+    #sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
+   
+    fname = os.path.join(out_dir, fname)
+    plt.tight_layout()
+    plt.savefig(f'{fname}.pdf', dpi=1400, bbox_inches='tight')
+    plt.clf()
+    
+def graph_complexity_by_depth(out_dir, fname, complexity_df):
+    """
+    Assumes table is:
+    depth, dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    nodes = complexity_df.loc[complexity_df.metric == 'nodes',:]
+    nplot = sns.lineplot(x=nodes['depth'].astype(np.float64), y=nodes['value'], hue=nodes['assembler'], legend=True)
+    nplot.set_xlabel('Read pairs')
+    nplot.set_ylabel('num_nodes')
+    nplot.set_title(f'{fname} - nodes')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_nodes.pdf'), bbox_inches='tight')
+    plt.clf()
+
+    edges = complexity_df.loc[complexity_df.metric == 'edges',:]
+    eplot = sns.lineplot(x=edges['depth'].astype(np.float64), y=edges['value'], hue=edges['assembler'], legend=True)
+    eplot.set_xlabel('Read pairs')
+    eplot.set_ylabel('num_edges')
+    eplot.set_title(f'{fname} - edges')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_edges.pdf'), bbox_inches='tight')
+    plt.clf()
+    
+    
+    
+def graph_NX_by_depth(out_dir, fname, nX_df):
+    """
+    Assumes table is:
+    depth, dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    n50 = nX_df.loc[nX_df.metric == 'N50',:]
+    n50plot = sns.lineplot(x=n50['depth'].astype(np.float64), y=n50['value'], hue=n50['assembler'], legend=True)
+    n50plot.set_xlabel('Read pairs')
+    n50plot.set_ylabel('N50')
+    n50plot.set_title(f'{fname} - N50')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_N50.pdf'), bbox_inches='tight')
+    plt.clf()
+    
+    n90 = nX_df.loc[nX_df.metric == 'N90',:]
+    n90plot = sns.lineplot(x=n90['depth'].astype(np.float64), y=n90['value'], hue=n90['assembler'], legend=True)
+    n90plot.set_xlabel('Read pairs')
+    n90plot.set_ylabel('N90')
+    n90plot.set_title(f'{fname} - N90')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_N90.pdf'), bbox_inches='tight')
+    plt.clf()
+
+def ss_recall(out_dir, fname, ss_quality):
+    """Assumes table is: 
+    dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    groups = ss_quality.groupby(['assembler', 'dataset']) 
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'dataset', 'metric', 'value'])
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, 'cnx_recall', compute_metric('cnx_recall', g))
+    for i, (fields, g) in enumerate(groups, start=scores.shape[0]):
+        scores.iloc[i, :] = (*fields, 'cov_recall', compute_metric('cov_recall', g))
+    sns.boxplot(x=scores['assembler'], y=scores['metric'], hue=scores['assembler'], legend=True, showFliers=False)
+    sns.stripplot(x=scores['assembler'], y=scores['value'], hue=scores['assembler'], legend=False, color='black', dodge=True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_ss_recall.pdf'), bbox_inches='tight')
+    plt.clf()
+   
+def ss_complexity(out_dir, fname, ss_complexity):
+    """Assumes table is: 
+    dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    sns.boxplot(
+        x=ss_complexity['metric'], y=ss_complexity['value'], hue=ss_complexity['assembler'],
+        showFliers=False, legend=True
+    )
+    sns.stripplot(
+        x=ss_complexity['metric'], y=ss_complexity['value'], hue=ss_complexity['assembler'],
+        color='black', dodge=True
+    )
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_ss_complexity.pdf'), bbox_inches='tight')
+    plt.clf()
+    
+def ss_nX(out_dir, fname, ss_nX):
+    """Assumes table is: 
+    dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    sns.boxplot(
+        x=ss_nX['metric'], y=ss_nX['value'], hue=ss_nX['assembler'],
+        showFliers=False, legend=True
+    )
+    sns.stripplot(
+        x=ss_complexity['metric'], y=ss_nX['value'], hue=ss_nX['assembler'],
+        color='black', dodge=True
+    )
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_ss_NX.pdf'), bbox_inches='tight')
+    plt.clf()
+    
+def co_recall(out_dir, fname, co_quality):
+    """Assumes table is: 
+    coassembly, assembler, metric, value
+    """
+    plt.clf()
+    groups = co_quality.groupby(['coassembly', 'assembler'])
+    scores = pd.DataFrame(index=range(len(groups)), columns=['coassembly', 'assembler', 'value'])
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric('cov_recall'))
+    sns.lineplot(x=(scores['coassembly'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
+    fname = os.path.join(out_dir, fname)
+    plt.tight_layout()
+    plt.savefig(f'{fname}_cov_recall.pdf', dpi=1400, bbox_inches='tight')
+    plt.clf()
+    
+    scores = pd.DataFrame(index=range(len(groups)), columns=['coassembly', 'assembler', 'value'])
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, compute_metric('cnx_recall'))
+    sns.lineplot(x=(scores['coassembly'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
+    fname = os.path.join(out_dir, fname)
+    plt.tight_layout()
+    plt.savefig(f'{fname}_cov_recall.pdf', dpi=1400, bbox_inches='tight')
+    plt.clf()
+    
+def co_complexity(out_dir, fname, co_complexity):
+    """Assumes table is: 
+    coassembly, assembler, metric, value
+    """
+    plt.clf()
+    nodes = co_complexity.loc[co_complexity.metric == 'nodes',:]
+    sns.lineplot(x=nodes['coassembly'].astype(np.float64), y=nodes['value'], hue='assembler')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_nodes.pdf'), dpi=1400, bbox_inches='tight')
+    plt.clf()
+    edges = co_complexity.loc[co_complexity.metric == 'edges',:]
+    sns.lineplot(x=edges['coassembly'].astype(np.float64), y=edges['value'], hue='assembler')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_edges.pdf'), dpi=1400, bbox_inches='tight')
+    plt.clf()
+    
+def co_nX(out_dir, fname, co_nX):
+    plt.clf()
+    n50 = co_nX.loc[co_nX.metric == 'N50',:]
+    sns.lineplot(x=n50['coassembly'].astype(np.float64), y=n50['value'], hue='assembler')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_N50.pdf'), dpi=1400, bbox_inches='tight')
+    plt.clf()
+    
+    n90 = co_nX.loc[co_nX.metric == 'N90',:]
+    sns.lineplot(x=n90['coassembly'].astype(np.float64), y=n90['value'], hue='assembler')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{fname}_N90.pdf'), dpi=1400, bbox_inches='tight')
+    plt.clf()
 
 
 def complexity_plot(fpath, depth, tool, cat):

@@ -19,12 +19,12 @@ if __name__ == '__main__':
     plot.write_summary(nX_df, f'{ASM}_all_nX_.csv')
     
     # Plot graph quality metircs by depth
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cnx_F-score', quality_df)
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cov_F-score', quality_df)
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cnx_precision', quality_df)
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cov_precision', quality_df)
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cnx_recall', quality_df)
-    plot.graph_quality_plot_coasm(RESULTS_PATH, f'{ASM}_cov_recall', quality_df)
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cnx_F-score', quality_df, metric='cnx_F-score')
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cov_F-score', quality_df, metric='cov_F-score')
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cnx_precision', quality_df, metric='cnx_precision')
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cov_precision', quality_df, metric='cov_precision')
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cnx_recall', quality_df, metric='cnx_recall')
+    plot.graph_quality_plot_depth(RESULTS_PATH, f'{ASM}_cov_recall', quality_df, metric='cov_recall')
     
     # plot complexity
     plot.graph_complexity_by_depth(RESULTS_PATH, f'{ASM}_graph_complexity', complexity_df)
