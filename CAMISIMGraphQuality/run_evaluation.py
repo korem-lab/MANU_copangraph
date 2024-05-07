@@ -110,12 +110,6 @@ if __name__ == '__main__':
 
         # build contig map
         contig_map = None
-        #contig_map = dict()
-        #idx = 0
-        #for node, seq in asm.contigs:
-        #    if node not in contig_map:
-        #        contig_map[node] = idx
-        #        idx += 1
         print('Computing coverage metrics')
         cov_metric_records = get_coverage_metrics(
             asm_name, alignments, genomes, genome_lens, asm, g_to_aln_idx, unaligned_contig_indicies, contig_map
