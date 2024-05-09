@@ -2,7 +2,7 @@
 import os
 import numpy as np
 import pandas as pd
-import parse_seq as parse_seq
+import Utils.parse_seq as parse_seq
 import tqdm
 from scipy import sparse as sp
 

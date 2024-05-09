@@ -276,17 +276,21 @@ def compute_assembly_complexity(asms, key, dataset, n_pairs):
 
 def compute_assembly_nX(asms, key, dataset, n_pairs):
     nX = pd.DataFrame(index=asms.keys(), columns=['key', 'dataset', 'depth', 'n50', 'n90'])
-    def nX(contigs, X):
-        lengths = np.array(len(e.seq) for e in contigs)[::-1]  # descending
+    def compute_nX(contigs, X):
+        lengths = np.array([len(seq) for _, seq in contigs])
+        lengths.sort()
+        lengths = lengths[::-1] # decending
         total_bp = lengths.sum()
-        x_total = int(X/100 * total_bp)
+        nx_bp = int(X/100 * total_bp)
         cum_sum = 0
         for l in lengths:
             cum_sum += l
-            if x_total >= cum_sum:
+            if cum_sum >= nx_bp:
                 return l
     for a in asms.values():
-        nX.loc[a.assembler, :] = [key, dataset, n_pairs, nX(a.contigs, 50), nX(a.contigs, 90)]
+        nX.loc[a.assembler, :] = [
+            key, dataset, n_pairs, compute_nX(a.contigs, 50), compute_nX(a.contigs, 90)
+        ]
     return nX
 
 

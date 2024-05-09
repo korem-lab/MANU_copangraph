@@ -7,7 +7,6 @@ import pandas as pd
 import mappy as mp
 
 from Utils.AssemblyParser import Assembly
-from Utils.constants import depth_map
 from Utils.evaluate_assembly import \
     align_nodes, compute_assembly_complexity, get_connectivity_metrics, \
     get_coverage_metrics, get_top_alignments, compute_consensus_breakpoints, compute_assembly_nX
@@ -26,12 +25,10 @@ if __name__ == '__main__':
         window_size = config['window_size']
         reference = config['reference']
         out_dir = config['out_dir']
-        key = config['key']
         run_desc = config['run_description']
+        key = config['key']
         dataset = config['dataset']
-        depth = depth_map(config['depth'][:-1])
-        dataset, base_asm, _ = key.split('-')
-        dataset = int(dataset)
+        depth = -1
         
     # make out_dir
     if not os.path.exists(out_dir):
@@ -125,4 +122,4 @@ if __name__ == '__main__':
 
     # write out data
     stats_dfs = pd.concat(stats_dfs)
-    stats_dfs.to_csv(os.path.join(out_dir, f'{run_desc}_results.csv'), index=False)
+    stats_dfs.to_csv(os.path.join(out_dir, f'{run_desc}_quality.csv'), index=False)
