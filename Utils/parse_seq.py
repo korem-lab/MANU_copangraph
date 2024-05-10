@@ -45,14 +45,14 @@ class GFASegment(GFA):
         super().__init__(t)
         self.nid = nid
         self.seq = seq
-        self.rest = rest
+        self.rest = rest[0]
 
     def __repr__(self):
         return f'GFASegment(nid={self.nid}, seq={self.seq[:10]})'
 
     def write(self, f):
         f.write(
-            '\t'.join([self.type, self.nid, self.seq] + list(self.rest)) + '\n'
+            '\t'.join([self.type, self.nid, self.seq,self.rest]) + '\n'
         )
 
 
@@ -97,7 +97,6 @@ def parse_gfa(fs, as_fasta=False):
             e = get_gfa_element(line)
             if e.type == GFATypes.S:
                 yield Fasta(e.nid, e.seq)
-    fs.close()
 
 
 

@@ -40,7 +40,7 @@ ASMS:
     assembly_file: './data/GherigGraphQuality/megahit/GHERIG_SRXXX/k141.fastg'
   ASM_2:
     assembler: 'copangraph'
-    assembly_file: './data/GherigGraphQuality/extractions/1_sample_SRXXX_cpg.gfa'
+    assembly_file: './data/GherigGraphQuality/extractions/1_sample_ssasm_sscpg_sslr_SRXXX.gfa'
 """
 
 def map_short_to_long(table, short):
