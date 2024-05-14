@@ -1,2 +1,6 @@
 data/*
 CAMISIMGraphQuality/scripts
+*.log
+*__pycache__*
+SequenceDivergence/input_yamls/
+Utils/align
