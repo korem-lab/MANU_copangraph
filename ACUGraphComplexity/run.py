@@ -8,7 +8,7 @@ from Utils.AssemblyParser import Assembly
 from Utils.evaluate_assembly import num_nodes, num_edges, compute_nX
 
 DATA = './data/ACUGraphComplexity'
-N_SAMPLES = [1, 5, 10, 20]
+N_SAMPLES = [1, 5, 10, 20, 50]
 REPS = [0, 1, 2]
 
 if __name__ == '__main__':
