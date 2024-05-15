@@ -78,7 +78,7 @@ def compute_within_node_similarity(segments, s2v_mat, sample_sz=10000, sample_pr
         for s1, s2 in zip(l_s1, l_s2):
             comparisons.append((v, s1, s2))
     print('computing alignments between', sample_sz, 'nodes: ', len(comparisons))
-    with Pool(processes=32) as pool:
+    with Pool(processes=64) as pool:
         ret = pool.map(palign, comparisons)
         
     mean_aln_score_pv = np.zeros(len(sample))
@@ -129,7 +129,7 @@ def compute_between_node_similarity(segments, s2v_mat, min_overlap, sample_sz=10
         valid_seqs.append((None, valid_u_seq, valid_v_seq))
         
     print('computing between node comparisons...', flush=True)
-    with Pool(processes=32) as pool:
+    with Pool(processes=64) as pool:
         ret = pool.map(palign, valid_seqs)
 
     scores = np.zeros(sample_sz)
@@ -165,7 +165,7 @@ if __name__ == '__main__':
     s2n_mat = get_sequence_to_node_matrix(segments, nodes, min_overlap)
     
     # construct within node distances 
-    within_node_min_similarity, within_node_mean_similarity = compute_within_node_similarity(segments, s2n_mat)
+    within_node_min_similarity, within_node_mean_similarity = compute_within_node_similarity(segments, s2n_mat, sample_proportion=0.05)
     
     # construct between sequence alignments
     between_node_similarity = compute_between_node_similarity(segments, s2n_mat, min_overlap)
@@ -174,6 +174,6 @@ if __name__ == '__main__':
     print('between- mean:', between_node_similarity.mean())
     
     # write to disk 
-    np.save(os.path.join(out_dir, f'{dn}_within_node_min_similarity.npy'), within_node_min_similarity)
-    np.save(os.path.join(out_dir, f'{dn}_within_node_mean_similarity.npy'), within_node_mean_similarity)
-    np.save(os.path.join(out_dir, f'{dn}_between_node_similarity.npy'), between_node_similarity)
+    np.save(os.path.join(out_dir, f'{dn}_perc_within_node_min_similarity.npy'), within_node_min_similarity)
+    np.save(os.path.join(out_dir, f'{dn}_perc_within_node_mean_similarity.npy'), within_node_mean_similarity)
+    np.save(os.path.join(out_dir, f'{dn}_perc_between_node_similarity.npy'), between_node_similarity)

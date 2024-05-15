@@ -35,6 +35,7 @@ class Assembly:
 
         edges = [(e.l_nid, e.r_nid) for e in edges]
         node_ids = set([e.nid for e in nodes])
+        print('node_ids:', len(node_ids))
         contigs = [(n.nid, n.seq) for n in nodes]
 
         return self.build_adjM(node_ids, edges), contigs
@@ -125,7 +126,7 @@ class Assembly:
                 continue
             adjM[node_to_index[u], node_to_index[v]] = True
             adjM[node_to_index[v], node_to_index[u]] = True
-
+        print("NODES:", len(nodes))
         adjM_df = pd.DataFrame.sparse.from_spmatrix(adjM, index=nodes, columns=nodes)
         print(f'missed edges:', n_missed)
 

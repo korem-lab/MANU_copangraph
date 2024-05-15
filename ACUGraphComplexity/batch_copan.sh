@@ -1,6 +1,6 @@
 #!/bin/bash 
 #SBATCH --job-name=cpg
-#SBATCH --time=1:00:00
+#SBATCH --time=2:00:00
 #SBATCH --mem=128G
 #SBATCH --cpus-per-task=64
 #SBATCH --account pmg

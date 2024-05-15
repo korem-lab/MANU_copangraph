@@ -65,7 +65,7 @@ def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_a
     }
 
     fun = functools.partial(get_genome_cov, g_to_aln_index, genome_lens, contig_map, alignments) 
-    with PPool(processes=16) as pool:
+    with PPool(processes=32) as pool:
         ret = pool.map(fun, enumerate(genomes))
         for dat in ret:
             if dat is None:
@@ -271,22 +271,29 @@ def compute_assembly_complexity(asms, key, dataset, n_pairs):
     # Count number of nodes and edges for each analysis and output to disk
     complexity = pd.DataFrame(index=asms.keys(), columns=['key', 'dataset', 'depth', 'num_nodes', 'num_edges'])
     for a in asms.values():
-        complexity.loc[a.assembler, :] = [key, dataset, n_pairs, len(a.adjM.index), a.adjM.sum().sum()]
+        complexity.loc[a.assembler, :] = [key, dataset, n_pairs, len(a.adjM.index), int(a.adjM.sum().sum()/2)]
     return complexity
 
+def num_nodes(a):
+    return len(a.adjM.index)
+
+def num_edges(a):
+    return int(a.adjM.sum().sum()/2)
+
+def compute_nX(contigs, X):
+    lengths = np.array([len(seq) for _, seq in contigs])
+    lengths.sort()
+    lengths = lengths[::-1] # decending
+    total_bp = lengths.sum()
+    nx_bp = int(X/100 * total_bp)
+    cum_sum = 0
+    for l in lengths:
+        cum_sum += l
+        if cum_sum >= nx_bp:
+            return l
+        
 def compute_assembly_nX(asms, key, dataset, n_pairs):
     nX = pd.DataFrame(index=asms.keys(), columns=['key', 'dataset', 'depth', 'n50', 'n90'])
-    def compute_nX(contigs, X):
-        lengths = np.array([len(seq) for _, seq in contigs])
-        lengths.sort()
-        lengths = lengths[::-1] # decending
-        total_bp = lengths.sum()
-        nx_bp = int(X/100 * total_bp)
-        cum_sum = 0
-        for l in lengths:
-            cum_sum += l
-            if cum_sum >= nx_bp:
-                return l
     for a in asms.values():
         nX.loc[a.assembler, :] = [
             key, dataset, n_pairs, compute_nX(a.contigs, 50), compute_nX(a.contigs, 90)
@@ -332,7 +339,7 @@ def align_nodes(asm, aligner, g=None, all_alignments=True):
     alignments = list()
     unaligned_nodes = set()
     fun = functools.partial(align_nodes_para, aligner, g, all_alignments)
-    with TPool(processes=16) as pool:
+    with TPool(processes=32) as pool:
         ret = pool.map(fun, enumerate(nodes))
         for a, i in ret:
             if len(a) == 0:
@@ -364,6 +371,51 @@ def compute_consensus_breakpoints(
     the consensus coordinate of a difficult to assemble region of a genome.
     """
     breakpoints_dict = defaultdict(list)
+    #def fun(data):
+    #    i, g = data
+    #    covered_region = np.full(genome_lens[i], 0, dtype=np.uint32)
+    #    breakpoints = list()
+    #    for k, (alignments, u) in alignment_dict.items():
+    #        if contigs_only and (k != 'megahit_contigs' and k != 'metaspades_contigs'):
+    #            continue
+    #        for a in alignments:
+    #            if a.genome != g:
+    #                continue
+    #            breakpoints.append(a.start)
+    #            breakpoints.append(a.end)
+    #            covered_region[a.start: a.end] += 1
+
+    #    breakpoints = np.array(breakpoints)
+    #    remaining_bps = np.full(len(breakpoints), True)
+    #    for j, bp in enumerate(breakpoints):
+    #        if (bp - window_sz < 0) or (bp + window_sz >= len(covered_region)):
+    #            remaining_bps[j] = False
+    #            continue
+    #        if not ((covered_region[bp-window_sz] == 1) and (covered_region[bp+window_sz] == 1)):
+    #            remaining_bps[j] = False
+    #    breakpoints = breakpoints[remaining_bps]
+    #    #print('breakpoints removed due to undersampling', len(remaining_bps) - sum(remaining_bps))
+    #    #print('Total breakpoints for genome', g, sum(remaining_bps))
+    #    if len(breakpoints) == 0:
+    #        return g, []
+    #    if cluster and len(breakpoints) > 1:
+    #        breakpoints = np.array(list(breakpoints)).reshape(-1, 1)  # reshape needed to work with sk-learn expected input
+    #        cluster_labels = AgglomerativeClustering(
+    #            distance_threshold=max_within_clust_dist, n_clusters=None, linkage='complete'
+    #        ).fit(breakpoints).labels_
+
+    #        # compute consensus_breakpoints
+    #        breakpoints = breakpoints.reshape(breakpoints.shape[0])  # return to series
+    #        consensus_breakpoints = [
+    #            int(average(breakpoints[cluster_labels == label])) for label in set(cluster_labels)
+    #        ]
+    #        return g, sorted(consensus_breakpoints)
+    #    else:
+    #        return g, sorted(list(breakpoints))
+    #with TPool(processes=64) as pool:
+    #    ret = pool.map(fun, enumerate(genomes), chunksize=5000)
+    #    for g, l in ret:
+    #        breakpoints_dict[g] = l
     for i, g in enumerate(genomes):
         covered_region = np.full(genome_lens[i], 0, dtype=np.uint32)
         breakpoints = list()

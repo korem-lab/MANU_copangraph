@@ -36,7 +36,7 @@ if __name__ == '__main__':
     for sample_id in sample_seg_map.keys():
         sample_name = sample_names[sample_id].replace('GHERIG_', '')
         print(sample_name)
-        with open(os.path.join('./data/GherigGraphQuality/', f'{coasm_sz}_sample_ssasm_sscpg_sslr_{sample_name}.gfa'), 'w') as f:
+        with open(os.path.join('./data/GherigGraphQuality/extractions', f'{coasm_sz}_sample_ssasm_sscpg_sslr_{sample_name}.gfa'), 'w') as f:
             for seg in sample_seg_map[sample_id]:
                 seg.write(f)
             for link in sample_link_map[sample_id]:

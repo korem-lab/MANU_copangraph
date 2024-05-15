@@ -44,12 +44,12 @@ if __name__ == '__main__':
     asms = {a.assembler: a for a in asms}
 
     # Compute complexity and nX
-    complexity = compute_assembly_complexity(asms, key, dataset, depth)
-    complexity.to_csv(os.path.join(out_dir, f'{run_desc}_complexity.csv'))
-    nX = compute_assembly_nX(asms, key, dataset, depth)
-    nX.to_csv(os.path.join(out_dir, f'{run_desc}_nX.csv'))
-    print(complexity)
-    print(nX)
+    #complexity = compute_assembly_complexity(asms, key, dataset, depth)
+    #complexity.to_csv(os.path.join(out_dir, f'{run_desc}_complexity.csv'))
+    #nX = compute_assembly_nX(asms, key, dataset, depth)
+    #nX.to_csv(os.path.join(out_dir, f'{run_desc}_nX.csv'))
+    #print(complexity)
+    #print(nX)
 
     # Build a minimap alignment object indexing the metagenomic reference genomes
     aligner = mp.Aligner(reference)

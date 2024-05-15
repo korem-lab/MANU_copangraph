@@ -33,6 +33,8 @@ if __name__ == '__main__':
     # construct ini and sample_list file, and coassembly pathnames
     groups = coassembly_table.groupby(by=['replicate', 'N'])
     for ((rep, n), df) in groups:
+        rep = int(rep)
+        n = int(n)
         print(rep, n)
         with open(f'./data/ACUGraphComplexity/coasm_{n}_rep_{rep}.list', 'w') as f:
             f.write('\n'.join(list(df.path)) + '\n')

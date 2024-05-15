@@ -45,7 +45,10 @@ class GFASegment(GFA):
         super().__init__(t)
         self.nid = nid
         self.seq = seq
-        self.rest = rest[0]
+        try:
+            self.rest = rest[0]
+        except IndexError:
+            self.rest = rest
 
     def __repr__(self):
         return f'GFASegment(nid={self.nid}, seq={self.seq[:10]})'

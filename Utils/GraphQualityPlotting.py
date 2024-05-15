@@ -100,23 +100,42 @@ def graph_NX_by_depth(out_dir, fname, nX_df):
     plt.savefig(os.path.join(out_dir, f'{fname}_N90.pdf'), bbox_inches='tight')
     plt.clf()
 
-def ss_recall(out_dir, fname, ss_quality):
+def ss_quality(out_dir, asm, metric, ss_quality):
     """Assumes table is: 
     dataset, assembler, metric, value
     """
     plt.clf()
     figure(figsize=(4, 4))
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
     groups = ss_quality.groupby(['assembler', 'dataset']) 
     # For each group, compute the relevant metric
     scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'dataset', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, 'cnx_recall', compute_metric('cnx_recall', g))
-    for i, (fields, g) in enumerate(groups, start=scores.shape[0]):
-        scores.iloc[i, :] = (*fields, 'cov_recall', compute_metric('cov_recall', g))
-    sns.boxplot(x=scores['assembler'], y=scores['metric'], hue=scores['assembler'], legend=True, showFliers=False)
-    sns.stripplot(x=scores['assembler'], y=scores['value'], hue=scores['assembler'], legend=False, color='black', dodge=True)
+        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
+    scores.loc[:, 'coasm_sz'] = scores.dataset.apply(lambda x: int(re.findall('([0-9])_sample', x)[0]))
+    #sns.boxplot(
+    #    showmeans=True,
+    #    meanline=True,
+    #    meanprops={'color': 'k', 'ls': '-', 'lw': 1.5},
+    #    medianprops={'visible': False},
+    #    whiskerprops={'visible': False},
+    #    zorder=10,
+    #    x="quantile_upper_bound",
+    #    y="value",
+    #    hue='assembler',
+    #    data=df,
+    #    showfliers=False,
+    #    showbox=False,
+    #    showcaps=False,
+    #    ax=ax
+    #)
+    sns.boxplot(x=scores['coasm_sz'], y=scores['value'], hue=scores['assembler'], showfliers=False)
+    sns.stripplot(x=scores['coasm_sz'], y=scores['value'], hue=scores['assembler'], legend=False, dodge=True, color='black')
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f'{fname}_ss_recall.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}.pdf'), bbox_inches='tight')
     plt.clf()
    
 def ss_complexity(out_dir, fname, ss_complexity):
@@ -155,28 +174,26 @@ def ss_nX(out_dir, fname, ss_nX):
     plt.savefig(os.path.join(out_dir, f'{fname}_ss_NX.pdf'), bbox_inches='tight')
     plt.clf()
     
-def co_recall(out_dir, fname, co_quality):
+def co_quality(out_dir, asm, metric, co_quality):
     """Assumes table is: 
     coassembly, assembler, metric, value
     """
     plt.clf()
+    print(co_quality)
+    sys.exit()
     groups = co_quality.groupby(['coassembly', 'assembler'])
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
     scores = pd.DataFrame(index=range(len(groups)), columns=['coassembly', 'assembler', 'value'])
     for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, compute_metric('cov_recall'))
+        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+    print(scores)
+    sys.exit()
     sns.lineplot(x=(scores['coassembly'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
-    fname = os.path.join(out_dir, fname)
     plt.tight_layout()
-    plt.savefig(f'{fname}_cov_recall.pdf', dpi=1400, bbox_inches='tight')
-    plt.clf()
-    
-    scores = pd.DataFrame(index=range(len(groups)), columns=['coassembly', 'assembler', 'value'])
-    for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, compute_metric('cnx_recall'))
-    sns.lineplot(x=(scores['coassembly'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
-    fname = os.path.join(out_dir, fname)
-    plt.tight_layout()
-    plt.savefig(f'{fname}_cov_recall.pdf', dpi=1400, bbox_inches='tight')
+    plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}.pdf'), dpi=1400, bbox_inches='tight')
     plt.clf()
     
 def co_complexity(out_dir, fname, co_complexity):

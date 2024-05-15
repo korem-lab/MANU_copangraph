@@ -2,13 +2,18 @@
 #SBATCH --job-name=ms
 #SBATCH --time=8:00:00
 #SBATCH --mem=256G
-#SBATCH --nodelist=m008
 #SBATCH --cpus-per-task=64
 #SBATCH --account pmg
 #SBATCH --output=/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/ACUGraphComplexity/log_%x-%j.log
 data=/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/ACUGraphComplexity/
 write=/pmglocal/ic2465
 
+
+# clear
+rm ${write}/${COASSEMBLY}_pooled_R1.fastq
+rm ${write}/${COASSEMBLY}_pooled_R2.fastq
+rm ${write}/${COASSEMBLY}_pooled_R1.fastq.gz
+rm ${write}/${COASSEMBLY}_pooled_R2.fastq.gz
 
 # pool
 cat $SAMPLES | while read s; do
