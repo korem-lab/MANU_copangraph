@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 DATA = './data/ACUGraphComplexity'
 if __name__ == '__main__':
    
-    df = pd.read_csv(os.path.join(DATA, 'complexity_table.csv'))
+    df = pd.read_csv(os.path.join(DATA, 'complexity_results.csv'), index_col=0)
    
     # melt copangraph ms to single column
     non_copan = df.loc[df.assembler != 'copangraph', :]
@@ -20,8 +20,8 @@ if __name__ == '__main__':
     # plot nodes
     for m in ['nodes', 'edges', 'N50', 'N90']:
         plt.clf()
-        nodes = df.loc[df.metric == m, :]
-        sns.lineplot(x=nodes.n_samples, y=nodes.value, hue=nodes.assembler)
+        m_df = df.loc[df.metric == m, :]
+        sns.lineplot(x=m_df.n_samples, y=m_df.value, hue=m_df.assembler)
         plt.tight_layout()
-        plt.savefig(os.path.join(DATA, f'{m}_complexity.pdf', dpi=1400, bbox_inches='tight')
+        plt.savefig(os.path.join(DATA, f'{m}_complexity.pdf'), dpi=1400, bbox_inches='tight')
    

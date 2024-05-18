@@ -180,18 +180,17 @@ def co_quality(out_dir, asm, metric, co_quality):
     """
     plt.clf()
     print(co_quality)
-    sys.exit()
-    groups = co_quality.groupby(['coassembly', 'assembler'])
+    groups = co_quality.groupby(['assembler', 'coasm_sz'])
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
     ]
-    scores = pd.DataFrame(index=range(len(groups)), columns=['coassembly', 'assembler', 'value'])
+    
+    scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'coasm_sz', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
     print(scores)
-    sys.exit()
-    sns.lineplot(x=(scores['coassembly'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
+    sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}.pdf'), dpi=1400, bbox_inches='tight')
     plt.clf()

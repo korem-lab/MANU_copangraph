@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import glob
 import pandas as pd
 import Utils.GraphQualityPlotting as plot
@@ -19,15 +20,12 @@ if __name__ == '__main__':
     print(co_quality)
     
     # concat data
-    ss_quality = pd.concat([pd.read_csv(e) for e in ss_quality])
-    ss_complexity = pd.concat([pd.read_csv(e) for e in ss_complexity])
-    ss_nX = pd.concat([pd.read_csv(e) for e in ss_nX])
-    co_quality = pd.concat([pd.read_csv(e) for e in co_quality])
-    co_complexity = pd.concat([pd.read_csv(e) for e in co_complexity])
-    co_nX = pd.concat([pd.read_csv(e) for e in co_nX])
-    print(co_quality.columns)
-    print(co_quality)
-    sys.exit()
+    ss_quality = pd.concat([pd.read_csv(e) for e in ss_quality], ignore_index=True)
+    ss_complexity = pd.concat([pd.read_csv(e) for e in ss_complexity], ignore_index=True)
+    ss_nX = pd.concat([pd.read_csv(e) for e in ss_nX], ignore_index=True)
+    co_quality = pd.concat([pd.read_csv(e) for e in co_quality], ignore_index=True)
+    co_complexity = pd.concat([pd.read_csv(e) for e in co_complexity], ignore_index=True)
+    co_nX = pd.concat([pd.read_csv(e) for e in co_nX], ignore_index=True)
    
     # write 
     ss_quality.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_quality.csv'))
@@ -52,6 +50,7 @@ if __name__ == '__main__':
     
     # Plot multi-sample curves
     #  Recall boxplots for 1, 3, 5, 10-sample co-assemblies 
+    co_quality.loc[:, 'coasm_sz'] = co_quality.dataset.apply(lambda x: int(re.findall('([0-9]+)_sample', x)[0]))
     plot.co_quality(RESULTS_PATH, CO, 'cov_F-score', co_quality)
     plot.co_quality(RESULTS_PATH, CO, 'cov_recall', co_quality)
     plot.co_quality(RESULTS_PATH, CO, 'cov_precision', co_quality)
