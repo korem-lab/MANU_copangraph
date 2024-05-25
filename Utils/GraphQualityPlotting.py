@@ -14,7 +14,7 @@ from itertools import combinations
 
 ABD_THRESH = 0.05
 
-def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler'):
+def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler', base=2):
 
     # ensure inputs are valid
     plt.clf()
@@ -34,11 +34,13 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
     scores = pd.DataFrame(index=range(len(groups)), columns=columns)
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, compute_metric(metric, g))
+    scores.to_csv(os.path.join(out_dir, f'{fname}_scores.csv'), index=None)
     # Plot line graph
     if filter_on:
         scores = scores.loc[scores.assembler == filter_on,:]
     ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True)
     ax.set_xlabel('Read pairs')
+    ax.set_xscale('log', base=base)
     ax.set_ylabel(metric)
     ax.set_title(f'{fname} {metric}')
     #sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
