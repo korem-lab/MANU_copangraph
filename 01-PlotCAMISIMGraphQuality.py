@@ -2,7 +2,7 @@ import os
 import sys
 import glob
 import pandas as pd
-from scipy.stats import mannwhitneyu
+from scipy.stats import wilcoxon
 from itertools import product
 import Utils.GraphQualityPlotting as plot
 
@@ -35,32 +35,34 @@ if __name__ == '__main__':
 
     # compute Mann-Whitney U
     scores = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_scores.csv'))
-    groups = {(d, a):frame for (d, a, frame) in scores.groupby(by=['depth', 'assembler'])}
+    groups = {(d, a):frame for ((d, a), frame) in scores.groupby(by=['depth', 'assembler'])}
     depths = set(scores.depth)
     tools = set(scores.assembler)
-    mwu_tests = pd.DataFrame(columns=['tool_a', 'tool_b', 'depth', 'pval', 'statistic', 'hyp'])
+    wcox_tests = pd.DataFrame(columns=['tool_a', 'tool_b', 'depth', 'pval', 'statistic', 'hyp'])
     for depth, tool_a, tool_b in product(depths, tools, tools):
-        if tool_a != 'copangraph':
+        if tool_a != 'copangraph' or tool_a == tool_b:
             continue
         t1 = groups[(depth, tool_a)]
         t2 = groups[(depth, tool_b)]
-        res = mannwhitneyu(t1.value, t2.value, alternative='greater')
-        mwu_tests.loc[len(mwu_tests), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
-    mwu_tests.to_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_mwu.csv'))
+        assert(all(t1.dataset.values == t2.dataset.values))
+        res = wilcoxon(t1.value, t2.value, alternative='greater')
+        wcox_tests.loc[len(wcox_tests), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
+    wcox_tests.to_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_wcox.csv'))
     
     scores = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_scores.csv'))
-    groups = {(d, a):frame for (d, a, frame) in scores.groupby(by=['depth', 'assembler'])}
+    groups = {(d, a):frame for ((d, a), frame) in scores.groupby(by=['depth', 'assembler'])}
     depths = set(scores.depth)
     tools = set(scores.assembler)
-    mwu_tests = pd.DataFrame(columns=['tool_a', 'tool_b', 'depth', 'pval', 'statistic', 'hyp'])
+    wcox_tests = pd.DataFrame(columns=['tool_a', 'tool_b', 'depth', 'pval', 'statistic', 'hyp'])
     for depth, tool_a, tool_b in product(depths, tools, tools):
-        if tool_a != 'copangraph':
+        if tool_a != 'copangraph' or tool_a == tool_b:
             continue
         t1 = groups[(depth, tool_a)]
         t2 = groups[(depth, tool_b)]
-        res = mannwhitneyu(t1.value, t1.value, alternative='greater')
-        mwu_tests.loc[len(mwu_tests), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
-    mwu_tests.to_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_mwu.csv'))
+        assert(all(t1.dataset.values == t2.dataset.values))
+        res = wilcoxon(t1.value, t1.value, alternative='greater')
+        wcox_tests.loc[len(wcox_tests), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
+    wcox_tests.to_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_wcox.csv'))
     
     # plot complexity
     #plot.graph_complexity_by_depth(RESULTS_PATH, f'{ASM}_graph_complexity', complexity_df)

@@ -118,6 +118,7 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
     scores.loc[:, 'coasm_sz'] = scores.dataset.apply(lambda x: int(re.findall('([0-9])_sample', x)[0]))
+    scores.to_csv(f'{asm}_{metric}_ss_scores.csv')
     #sns.boxplot(
     #    showmeans=True,
     #    meanline=True,
@@ -134,8 +135,9 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     #    showcaps=False,
     #    ax=ax
     #)
-    sns.boxplot(x=scores['coasm_sz'], y=scores['value'], hue=scores['assembler'], showfliers=False)
-    sns.stripplot(x=scores['coasm_sz'], y=scores['value'], hue=scores['assembler'], legend=False, dodge=True, color='black')
+    scores = scores.loc[scores.coasm_sz == 9, :]
+    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False)
+    sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black')
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}.pdf'), bbox_inches='tight')
     plt.clf()
@@ -191,7 +193,7 @@ def co_quality(out_dir, asm, metric, co_quality):
     scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'coasm_sz', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
-    print(scores)
+    scores.to_csv(f'{asm}_{metric}_co_scores.csv')
     sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
     plt.tight_layout()
     plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}.pdf'), dpi=1400, bbox_inches='tight')

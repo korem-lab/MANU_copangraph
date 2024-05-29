@@ -37,12 +37,12 @@ if __name__ == '__main__':
     
     # Plot single-sample distributions 
     # Recall boxplots across the 10 datasets for coverage connectivity
-    #plot.ss_quality(RESULTS_PATH, SS, 'cov_F-score', ss_quality)
-    #plot.ss_quality(RESULTS_PATH, SS, 'cov_recall', ss_quality)
-    #plot.ss_quality(RESULTS_PATH, SS, 'cov_precision', ss_quality)
-    #plot.ss_quality(RESULTS_PATH, SS, 'cnx_F-score', ss_quality)
-    #plot.ss_quality(RESULTS_PATH, SS, 'cnx_recall', ss_quality)
-    #plot.ss_quality(RESULTS_PATH, SS, 'cnx_precision', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cov_F-score', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cov_recall', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cov_precision', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cnx_F-score', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cnx_recall', ss_quality)
+    plot.ss_quality(RESULTS_PATH, SS, 'cnx_precision', ss_quality)
     # Nodes and edges boxplots across the 10 datasets
     #plot.ss_complexity(RESULTS_PATH, f'{ASM}_ss_complexity', ss_complexity)
     # N50 / N90 boxplots

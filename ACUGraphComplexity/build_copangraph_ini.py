@@ -8,9 +8,9 @@ log_file_dir = logs
 log_level = 0 
 log_to = 0 
 sample_list = /burg/pmg/users/ic2465/Projects/MANU_copangraph/data/ACUGraphComplexity/coasm_VARN_rep_VARREP.list
-graph_name = coasm_VARN_rep_VARREP_ms_VARMS
+graph_name = coasm_VARN_rep_VARREP_ms_VARMS_dt_VARDT
 out_dir = /burg/pmg/users/ic2465/Projects/MANU_copangraph/data/ACUGraphComplexity/
-divergence_threshold = 0.02
+divergence_threshold = VARDT
 num_threads = 64
 max_separation = 150
 window_size = 10
@@ -40,5 +40,11 @@ if __name__ == '__main__':
             f.write('\n'.join(list(df.path)) + '\n')
         for ms in [100, 1000, 5000]:
             with open(f'./data/ACUGraphComplexity/coasm_{n}_rep_{rep}_ms_{ms}.ini', 'w') as f:
-                out = INI_TMPLT.replace('VARN', str(n)).replace('VARMS', str(ms)).replace('VARREP',str(rep))
+                out = INI_TMPLT.replace('VARN', str(n)).replace('VARMS', str(ms)).replace('VARREP',str(rep)).replace('VARDT', '0.02')
                 f.write(out + '\n')
+        for dt in ['0.005', '0.01', '0.02', '0.05', '0.1']:
+            with open(f'./data/ACUGraphComplexity/coasm_{n}_rep_{rep}_ms_1000_dt_{dt}.ini', 'w') as f:
+                out = INI_TMPLT.replace('VARN', str(n)).replace('VARMS', '1000').replace('VARREP',str(rep)).replace('VARDT', dt)
+                f.write(out + '\n')
+
+
