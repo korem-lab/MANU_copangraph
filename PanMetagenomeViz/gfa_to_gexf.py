@@ -45,9 +45,10 @@ def build_initial_graph(gfa, node_info, boring_weight=0.5):
         G.add_edge(e.l_nid, e.r_nid, weight=1 if (interesting_node[e.l_nid] and interesting_node[e.r_nid]) else boring_weight)
     return G
 
-def expand_graph(G, node_info, node_lengths, keep_self_loops=False, block_size=1000, boring_weight=0.5):
+def expand_graph(G, node_info, node_lengths, keep_self_loops=False, block_size=2500, boring_weight=0.5):
     
     H = G.copy()
+    print('Number of nodes before: ', H.number_of_nodes())
     for i in tqdm.tqdm(node_info.index):
         node = node_info.loc[i, 'node']
         if node not in H:
@@ -88,6 +89,7 @@ def expand_graph(G, node_info, node_lengths, keep_self_loops=False, block_size=1
             
         if keep_self_loops and self_loop:
             G.add_edge(chain[0], chain[1], weight=w)
+    print('Number of nodes after: ', H.number_of_nodes())
     return H
         
     
@@ -106,13 +108,14 @@ if __name__ == '__main__':
     node_lengths = get_seq_length([e for e in gfa if e.type == ps.GFATypes.S])
     
     node_info = noi.loc[noi.node.isin({e.nid for e in gfa if e.type == ps.GFATypes.S})]
+    RELEVANT_BUGS_NAME = [e for e in noi.columns if e.startswith('s__')]
     
     print('Build initial graph')
-    G = build_initial_graph(gfa, node_info)
+    G = build_initial_graph(gfa, node_info, boring_weight=1)
     print('Expand graph')
-    G = expand_graph(G, node_info, node_lengths)
+    G = expand_graph(G, node_info, node_lengths, boring_weight=1)
     print('Write')
-    nx.write_gexf(G, os.path.join(DATA, 'filtered_gfa_length_expansion.gexf'))
+    nx.write_gexf(G, os.path.join(DATA, 'filtered_gfa_length_expansion_all.gexf'))
     
     
 #    print(noi.shape)

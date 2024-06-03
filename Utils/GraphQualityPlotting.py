@@ -14,7 +14,7 @@ from itertools import combinations
 
 ABD_THRESH = 0.05
 
-def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler', base=2):
+def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler', base=2, stats=None):
 
     # ensure inputs are valid
     plt.clf()
@@ -39,6 +39,21 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
     if filter_on:
         scores = scores.loc[scores.assembler == filter_on,:]
     ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True)
+    if stats is not None:
+        y_max = 0.5 if 'cnx' in fname else 0.7
+        coldict = {'megahit_contigs':'green', 'megahit_graph':'red', 'mcvl':'orange'}
+        space_dict = {'megahit_contigs':0.05, 'megahit_graph':0.075, 'mcvl':0.1}
+        print(stats)
+        for i in stats.index:
+            tool = stats.loc[i, 'tool_b']
+            pval = stats.loc[i, 'pval']
+            if pval > 0.05:
+                symbol = ''
+            else:
+                symbol = '*'
+            depth = int(stats.loc[i, 'depth'])
+            ax.text(depth, y_max + space_dict[tool], symbol, color=coldict[tool])
+        ax.set_ylim(top=y_max+0.15)
     ax.set_xlabel('Read pairs')
     ax.set_xscale('log', base=base)
     ax.set_ylabel(metric)

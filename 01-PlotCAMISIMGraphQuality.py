@@ -25,13 +25,16 @@ if __name__ == '__main__':
     complexity_df.to_csv(os.path.join(RESULTS_PATH, f'{ASM}_all_complexity.csv'))
     nX_df.to_csv(os.path.join(RESULTS_PATH, f'{ASM}_all_nX_.csv'))
     
+    # get stats
+    wcox_cov = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_wcox.csv'),index_col=0) 
+    wcox_cnx = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_wcox.csv'), index_col=0) 
     # Plot graph quality metircs by depth
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_F-score', quality_df, metric='cnx_F-score')
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_F-score', quality_df, metric='cov_F-score')
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_precision', quality_df, metric='cnx_precision')
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_precision', quality_df, metric='cov_precision')
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_recall', quality_df, metric='cnx_recall')
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_recall', quality_df, metric='cov_recall')
+    #plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_F-score', quality_df, metric='cnx_F-score', stats=wcox_cnx)
+    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_F-score', quality_df, metric='cov_F-score', stats=wcox_cov)
+    #plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_precision', quality_df, metric='cnx_precision')
+    #plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_precision', quality_df, metric='cov_precision')
+    #plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_recall', quality_df, metric='cnx_recall')
+    #plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_recall', quality_df, metric='cov_recall')
 
     # compute Mann-Whitney U
     scores = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_scores.csv'))
@@ -60,7 +63,7 @@ if __name__ == '__main__':
         t1 = groups[(depth, tool_a)]
         t2 = groups[(depth, tool_b)]
         assert(all(t1.dataset.values == t2.dataset.values))
-        res = wilcoxon(t1.value, t1.value, alternative='greater')
+        res = wilcoxon(t1.value, t2.value, alternative='greater')
         wcox_tests.loc[len(wcox_tests), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
     wcox_tests.to_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_wcox.csv'))
     
