@@ -224,63 +224,100 @@ int main(int argc, char* argv[]) {
     omp_set_num_threads(threads);
 
 
-    std::string cpg_ms_1000_dt_02 = datadir + "coasm_5_rep_0_ms_1000.fasta";
-    std::string cpg_ms_1000_dt_05 = datadir + "coasm_5_rep_0_ms_1000_dt_0.05.fasta";
-    std::string cpg_ms_100_dt_02 = datadir + "coasm_5_rep_0_ms_100.fasta";
-    std::string k141 = datadir + "k141.fastg";
-    std::string k59 =  datadir + "k59.fastg";
+    std::string cpg_ms_1000_dt_02 = datadir + "coasm_50_rep_2_ms_1000_dt_0.02.fasta";
+    std::string cpg_ms_1000_dt_05 = datadir + "coasm_50_rep_2_ms_1000_dt_0.05.fasta";
+    std::string cpg_ms_1000_dt_1 = datadir + "coasm_50_rep_2_ms_1000_dt_0.1.fasta";
+    std::string cpg_ms_100_dt_02 = datadir + "coasm_50_rep_2_ms_100.fasta";
+    std::string k141 = datadir + "coasm_50_rep_2/k141.fastg";
+    std::string k59 =  datadir + "coasm_50_rep_2/k59.fastg";
+    std::cout << cpg_ms_1000_dt_02 << std::endl;
+    std::cout << cpg_ms_1000_dt_05 << std::endl;
+    std::cout << cpg_ms_100_dt_02 << std::endl;
+    std::cout << k141 << std::endl;
+    std::cout << k59 << std::endl;
 
     auto kmer_to_sample_count = get_kmer_frequency_by_sample(slist, K, threads);
     std::cout << "total kmers across all reads: " << kmer_to_sample_count.size() << std::endl;
 
-    auto kmer_to_node_count_copan = get_kmer_frequency_by_node(cpg_ms_1000_dt_02, K, true);
-    std::cout << "total kmers in copangraph: " << kmer_to_node_count_copan.size() << std::endl;
-    std::ofstream fout(out_file + "copan_ms_1000_dt_02_kmix.csv");
-    fout << "node_count,sample_count" << std::endl;
-    for (auto const & kmer : kmer_to_node_count_copan) {
-        fout << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
-    }
-    fout.close();
-    kmer_to_node_count_copan.clear();
+    #pragma omp parallel sections
+    {
+	#pragma omp section
+	{
+    		auto A = get_kmer_frequency_by_node(cpg_ms_1000_dt_02, K, true);
+    		std::cout << "total kmers in copangraph: " << A.size() << std::endl;
+    		std::ofstream fout_A(out_file + "copan_ms_1000_dt_02_kmix.csv");
+    		fout_A << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : A) {
+    		    fout_A << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+    		fout_A.close();
+    		A.clear();
+	}
+		
+        #pragma omp section
+	{
+    		auto B = get_kmer_frequency_by_node(cpg_ms_1000_dt_05, K, true);
+    		std::cout << "total kmers in copangraph: " << B.size() << std::endl;
+		std::ofstream fout_B(out_file + "copan_ms_1000_dt_05_kmix.csv");
+    		fout_B << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : B) {
+    		    fout_B << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+    		fout_B.close();
+    		B.clear();
+	}
+	
+	# pragma omp section
+	{
+    		auto C = get_kmer_frequency_by_node(cpg_ms_1000_dt_1, K, true);
+    		std::cout << "total kmers in copangraph: " << C.size() << std::endl;
+		std::ofstream fout_C(out_file + "copan_ms_1000_dt_1_kmix.csv");
+    		fout_C << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : C) {
+    		    fout_C << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+    		fout_C.close();
+    		C.clear();
+	}	
+	
+	# pragma omp section
+    	{
+    		auto D = get_kmer_frequency_by_node(cpg_ms_100_dt_02, K, true);
+    		std::cout << "total kmers in copangraph: " << D.size() << std::endl;
+		std::ofstream fout_D(out_file + "copan_ms_100_dt_02_kmix.csv");
+    		fout_D << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : D) {
+    		    fout_D << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+    		fout_D.close();
+    		D.clear();
+	}
 
-    kmer_to_node_count_copan = get_kmer_frequency_by_node(cpg_ms_1000_dt_05, K, true);
-    std::cout << "total kmers in copangraph: " << kmer_to_node_count_copan.size() << std::endl;
-    fout.open(out_file + "copan_ms_1000_dt_05_kmix.csv");
-    fout << "node_count,sample_count" << std::endl;
-    for (auto const & kmer : kmer_to_node_count_copan) {
-        fout << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+	#pragma omp section
+	{
+    		auto E= get_kmer_frequency_by_node(k141, K, false);
+    		std::cout << "total kmers in coasm: " << E.size() << std::endl;
+		std::ofstream fout_E(out_file + "k141_kmix.csv");
+    		fout_E << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : E) {
+    		    fout_E << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+    		fout_E.close();
+    		E.clear();
+	}
+	
+	#pragma omp section
+	{
+    		auto F = get_kmer_frequency_by_node(k59, K, false);
+    		std::cout << "total kmers in coasm: " << F.size() << std::endl;
+		std::ofstream fout_F(out_file + "k59_kmix.csv");
+    		fout_F << "node_count,sample_count" << std::endl;
+    		for (auto const & kmer : F) {
+    		    fout_F << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
+    		}
+		fout_F.close(); 
+		F.clear();
+	}
     }
-    fout.close();
-    kmer_to_node_count_copan.clear();
 
-    kmer_to_node_count_copan = get_kmer_frequency_by_node(cpg_ms_100_dt_02, K, true);
-    std::cout << "total kmers in copangraph: " << kmer_to_node_count_copan.size() << std::endl;
-    fout.open(out_file + "copan_ms_100_dt_02_kmix.csv");
-    fout << "node_count,sample_count" << std::endl;
-    for (auto const & kmer : kmer_to_node_count_copan) {
-        fout << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
-    }
-    fout.close();
-    kmer_to_node_count_copan.clear();
-
-
-    auto kmer_to_node_count_coasm = get_kmer_frequency_by_node(k141, K, false);
-    std::cout << "total kmers in coasm: " << kmer_to_node_count_coasm.size() << std::endl;
-    fout.open(out_file + "k141_kmix.csv");
-    fout << "node_count,sample_count" << std::endl;
-    for (auto const & kmer : kmer_to_node_count_coasm) {
-        fout << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
-    }
-    fout.close();
-    kmer_to_node_count_coasm.clear();
-
-    kmer_to_node_count_coasm = get_kmer_frequency_by_node(k59, K, false);
-    std::cout << "total kmers in coasm: " << kmer_to_node_count_coasm.size() << std::endl;
-    fout.open(out_file + "k59_kmix.csv");
-    fout << "node_count,sample_count" << std::endl;
-    for (auto const & kmer : kmer_to_node_count_coasm) {
-        fout << kmer.second << ',' << unsigned(kmer_to_sample_count[kmer.first]) << '\n';
-    }
-    fout.close();
-    kmer_to_node_count_coasm.clear();
 }

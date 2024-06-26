@@ -6,3 +6,6 @@ CAMISIMGraphQuality/scripts
 SequenceDivergence/input_yamls/
 Utils/align
 spacegraphcats
+*.gz
+inputs
+outputs

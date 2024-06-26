@@ -38,12 +38,16 @@ if __name__ == '__main__':
     for sd in SEQDIVS:
         sd_str = str(sd)
         print(sd_str)
-        plot_kde(within_mean[sd_str], sd, os.path.join(DATA, f'within_mean_{sd_str}.pdf'), 0.95, within=True)
+        #plot_kde(within_mean[sd_str], sd, os.path.join(DATA, f'within_mean_{sd_str}.pdf'), 0.95, within=True)
         df.loc[len(df), :] = ['within_mean', f'{1-sd:.3f}', 100 - percentileofscore(within_mean[sd_str], 1-sd)]
-        plot_kde(within_min[sd_str], sd, os.path.join(DATA, f'within_min_{sd_str}.pdf'), 0.95, within=True)
+        #plot_kde(within_min[sd_str], sd, os.path.join(DATA, f'within_min_{sd_str}.pdf'), 0.95, within=True)
         df.loc[len(df), :] = ['within_min', f'{1-sd:.3f}', 100 - percentileofscore(within_min[sd_str], 1-sd)]
-        plot_kde(between[sd_str], sd, os.path.join(DATA, f'between_{sd_str}.pdf'), 0.5, within=False)
+        #plot_kde(between[sd_str], sd, os.path.join(DATA, f'between_{sd_str}.pdf'), 0.5, within=False)
         df.loc[len(df), :] = ['between', f'{1-sd:.3f}', 100 - percentileofscore(between[sd_str], 1-sd)]
+        
+        df.loc[len(df), :] = ['mean_between', f'{1-sd:.3f}', between[sd_str].mean()]
+        df.loc[len(df), :] = ['mean_within_mean', f'{1-sd:.3f}', within_mean[sd_str].mean()]
+        df.loc[len(df), :] = ['mean_within_min', f'{1-sd:.3f}', within_min[sd_str].mean()]
     df.to_csv(os.path.join(DATA, 'percentile_of_score.csv'))
         
         
