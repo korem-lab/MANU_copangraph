@@ -151,10 +151,48 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     #    ax=ax
     #)
     scores = scores.loc[scores.coasm_sz == 9, :]
+    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}.pdf'), bbox_inches='tight')
+    plt.clf()
+
+def camisim_coasm_quality(out_dir, asm, metric, ss_quality):
+    """Assumes table is: 
+    dataset, assembler, metric, value
+    """
+    plt.clf()
+    figure(figsize=(4, 4))
+    assert metric in [
+        'cnx_precision', 'cnx_recall', 'cnx_F-score',
+        'cov_precision', 'cov_recall', 'cov_F-score',
+    ]
+    groups = ss_quality.groupby(['assembler', 'dataset']) 
+    # For each group, compute the relevant metric
+    scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'dataset', 'metric', 'value'])
+    for i, (fields, g) in enumerate(groups):
+        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
+    scores.to_csv(f'{asm}_{metric}_scores.csv')
+    #sns.boxplot(
+    #    showmeans=True,
+    #    meanline=True,
+    #    meanprops={'color': 'k', 'ls': '-', 'lw': 1.5},
+    #    medianprops={'visible': False},
+    #    whiskerprops={'visible': False},
+    #    zorder=10,
+    #    x="quantile_upper_bound",
+    #    y="value",
+    #    hue='assembler',
+    #    data=df,
+    #    showfliers=False,
+    #    showbox=False,
+    #    showcaps=False,
+    #    ax=ax
+    #)
     sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False)
     sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black')
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(out_dir, f'{asm}_{metric}.pdf'), bbox_inches='tight')
     plt.clf()
    
 def ss_complexity(out_dir, fname, ss_complexity):

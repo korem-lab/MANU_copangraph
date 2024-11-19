@@ -4,16 +4,16 @@ import pandas as pd
 import parse_seq
 import glob
 import re
-DATA = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/Predictions/mdro'
+DATA = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/Predictions/moms-pi'
 
 if __name__ == '__main__':
     
     gfas = glob.glob(os.path.join(DATA, '*.gfa'))  
-    sns = pd.read_csv(os.path.join(DATA, 'mdro_pos.list'), header=None)
+    sns = pd.read_csv(os.path.join(DATA, 'MOMS_PI_sample_names.list'), header=None)
     for gfa in gfas:
         print(gfa, '...')
         u, v = None, None
-        if '+' in gfa or '-' in gfa:
+        if '+.' in gfa or '-.' in gfa:
             u, v = re.findall('([0-9]+)[\\-\\+]_([0-9]+)[\\+\\-]\\.gfa', gfa)[0]
             print(u, v)
         else:

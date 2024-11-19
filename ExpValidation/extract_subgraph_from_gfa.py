@@ -5,8 +5,8 @@ import pandas as pd
 import parse_seq 
 from scipy import sparse as sp
 from collections import defaultdict
-COPAN_DIR = '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/analyses/mdro_prediction/scratch/copangraphs/'
-OUT_DIR = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/Predictions/mdro'
+COPAN_DIR = '/burg/pmg/users/az2732/copan_MOMS_PI_out'
+OUT_DIR = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/Predictions/moms-pi'
 
 def edge_kv(u, v, uori, vori):
     if u < v:
@@ -88,7 +88,7 @@ def write_contigs(sample_names, nodes_lookup, subgraph_nodes, fname):
             for fa in parse_seq.parse(f, parse_seq.Fasta):
                 cn = fa.hdr.split(' ')[0]
                 if cn in cset:
-                    fa.hdr = f'{cn} {k} {sample_name}'
+                    fa.hdr = f'{cn}_{k}_{sample_name}'
                     contigs.append(fa)
     print(len(contigs))
     with open(fname, 'w') as f:

@@ -26,21 +26,24 @@ TMPLT2 = """asm_artifact_gap: 150
 max_within_clust_distance: 200
 window_size: 175
 run_description: '1_sample_ssasm_sscpg_sslr_SRXXX'
-reference: './data/GherigGraphQuality/ASMXXX_flye_asm.fasta'
-out_dir: './data/GherigGraphQuality/coassemblies/'
+reference: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/ASMXXX_flye_asm.fasta'
+out_dir: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/single_sample_analysis'
 key: '1_sample_ssasm_sscpg_sslr_SRXXX'
 dataset: '1_sample_SRXXX'
 long_reads: 'LRXXX'
 ASMS:
   ASM_0:
     assembler: 'megahit_contigs'
-    assembly_file: './data/GherigGraphQuality/megahit/GHERIG_SRXXX/final.contigs.fa'
+    assembly_file: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/megahit/GHERIG_SRXXX/final.contigs.fa'
   ASM_1:
     assembler: 'megahit_graph'
-    assembly_file: './data/GherigGraphQuality/megahit/GHERIG_SRXXX/k141.fastg'
+    assembly_file: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/megahit/GHERIG_SRXXX/k141.fastg'
   ASM_2:
+    assembler: 'metacarvel'
+    assembly_file: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/ss_mcvl/gherig_SRXXX_mcvl/mcvl/scaffold_graph.seq.gfa'
+  ASM_3:
     assembler: 'copangraph'
-    assembly_file: './data/GherigGraphQuality/extractions/1_sample_ssasm_sscpg_sslr_SRXXX.gfa'
+    assembly_file: '/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/extractions/1_sample_ssasm_sscpg_sslr_SRXXX.gfa'
 """
 
 def map_short_to_long(table, short):
@@ -75,7 +78,7 @@ if __name__ == '__main__':
             l = map_short_to_long(ls_map, s)
             print(s, l)
             with open(f'{coasm_sz}_sample_ssasm_sscpg_sslr_{l}_{s}.yaml', 'w') as f:
-                l_asm_pref = 'GHERIG_' + l
+                l_asm_pref = '' + l
                 out = TMPLT2.replace('ASMXXX', l_asm_pref).replace('SRXXX', s)\
                     .replace('LRXXX', l).replace('1_sample', f'{coasm_sz}_sample')
                 print(out)
