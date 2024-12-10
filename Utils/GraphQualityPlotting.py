@@ -11,6 +11,7 @@ from matplotlib.pyplot import figure
 from itertools import combinations
 
 #import evaluation.utils.constants as constants
+figure(figsize=(3, 3))
 
 ABD_THRESH = 0.05
 
@@ -18,7 +19,6 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
 
     # ensure inputs are valid
     plt.clf()
-    figure(figsize=(4, 4))
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
@@ -54,15 +54,27 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
             depth = int(stats.loc[i, 'depth'])
             ax.text(depth, y_max + space_dict[tool], symbol, color=coldict[tool])
         ax.set_ylim(top=y_max+0.15)
+
+    # put ticks at exact measurement position 
     ax.set_xlabel('Read pairs')
     ax.set_xscale('log', base=base)
+    plt.xticks(ticks=[1*10**6, 2*10**6, 5*10**6, 10*10**6, 20*10**6, 40*10**6, 60*10**6, 80*10**6], labels=[1*10**6, 2*10**6, 5*10**6, 10*10**6, 20*10**6, 40*10**6, 60*10**6, 80*10**6])
     ax.set_ylabel(metric)
     ax.set_title(f'{fname} {metric}')
     #sns.move_legend(ax, 'upper left', bbox_to_anchor=(1, 1))
-   
     fname = os.path.join(out_dir, fname)
     plt.tight_layout()
-    plt.savefig(f'{fname}.pdf', dpi=1400, bbox_inches='tight')
+    plt.savefig(f'{fname}_labels.pdf', dpi=1400, bbox_inches='tight')
+
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    frame1.legend().set_visible(False)
+    plt.title('')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(f'{fname}_nolabels.pdf', dpi=1400, bbox_inches='tight')
     plt.clf()
     
 def graph_complexity_by_depth(out_dir, fname, complexity_df):
@@ -71,7 +83,6 @@ def graph_complexity_by_depth(out_dir, fname, complexity_df):
     depth, dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     nodes = complexity_df.loc[complexity_df.metric == 'nodes',:]
     nplot = sns.lineplot(x=nodes['depth'].astype(np.float64), y=nodes['value'], hue=nodes['assembler'], legend=True)
     nplot.set_xlabel('Read pairs')
@@ -98,7 +109,6 @@ def graph_NX_by_depth(out_dir, fname, nX_df):
     depth, dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     n50 = nX_df.loc[nX_df.metric == 'N50',:]
     n50plot = sns.lineplot(x=n50['depth'].astype(np.float64), y=n50['value'], hue=n50['assembler'], legend=True)
     n50plot.set_xlabel('Read pairs')
@@ -122,7 +132,6 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
@@ -153,16 +162,27 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     scores = scores.loc[scores.coasm_sz == 9, :]
     sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
     sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    plt.ylim((None, scores['value'].max() + 0.2))
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}.pdf'), bbox_inches='tight')
+    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}_labels.pdf'), bbox_inches='tight', dpi=1400)
+
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    frame1.legend().set_visible(False)
+    plt.title('')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}_nolabels.pdf'), bbox_inches='tight', dpi=1400)
     plt.clf()
+    
 
 def camisim_coasm_quality(out_dir, asm, metric, ss_quality):
     """Assumes table is: 
     dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
@@ -200,7 +220,6 @@ def ss_complexity(out_dir, fname, ss_complexity):
     dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     sns.boxplot(
         x=ss_complexity['metric'], y=ss_complexity['value'], hue=ss_complexity['assembler'],
         showFliers=False, legend=True
@@ -218,7 +237,6 @@ def ss_nX(out_dir, fname, ss_nX):
     dataset, assembler, metric, value
     """
     plt.clf()
-    figure(figsize=(4, 4))
     sns.boxplot(
         x=ss_nX['metric'], y=ss_nX['value'], hue=ss_nX['assembler'],
         showFliers=False, legend=True
@@ -248,10 +266,20 @@ def co_quality(out_dir, asm, metric, co_quality):
         scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
     scores.to_csv(f'{asm}_{metric}_co_scores.csv')
     sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
+    plt.xticks(ticks=[3,6,9], labels=[3,6,9])
     plt.tight_layout()
-    plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}.pdf'), dpi=1400, bbox_inches='tight')
+    plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}_labels.pdf'), dpi=1400, bbox_inches='tight')
+    frame1 = plt.gca()
+    frame1.axes.xaxis.set_ticklabels([])
+    frame1.axes.yaxis.set_ticklabels([])
+    frame1.legend().set_visible(False)
+    plt.title('')
+    plt.xlabel('')
+    plt.ylabel('')
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}_nolabels.pdf'), bbox_inches='tight', dpi=1400)
     plt.clf()
-    
+
 def co_complexity(out_dir, fname, co_complexity):
     """Assumes table is: 
     coassembly, assembler, metric, value
@@ -285,7 +313,6 @@ def co_nX(out_dir, fname, co_nX):
 
 def complexity_plot(fpath, depth, tool, cat):
     plt.clf()
-    fig = plt.figure(figsize=(4,4))
     data = pd.read_csv(fpath)
     tools = {t for t in data.assembler if 'COMET' in t}
     tools.add(f'{tool}-graph')
@@ -305,7 +332,6 @@ def complexity_plot(fpath, depth, tool, cat):
 
 def resource_plot(data, resource):
     plt.clf()
-    figure(figsize=(4, 4))
     data = data.sort_values(by=['num_samples', 'tool'])
     print(data)
     _resource = 'rss (GB)' if resource == 'rss' else 'time (min)'
@@ -408,7 +434,6 @@ def construct_distribution_of_single_metric_across_datasets(metric, raw_data):
 
 def plot_distribution_of_single_metric_across_datasets(data, y_label, fig_name, x_label='assembler', dpi=1400):
     plt.clf()
-    figure(figsize=(4, 4))
     ax = sns.boxplot(x=data.assembler, y=data.value, showfliers=False)
     sns.stripplot(x=data.assembler, y=data.value, legend=False, color='black')
     #sns.boxplot(
@@ -440,7 +465,6 @@ def graph_quality_plot_depth(dataset, metric, raw_data, group_replicates=False, 
 
     # ensure inputs are valid
     plt.clf()
-    figure(figsize=(4, 4))
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
@@ -480,7 +504,6 @@ def graph_quality_plot_coasm(dataset_name, metric, raw_data):
 
     # ensure inputs are valid
     plt.clf()
-    figure(figsize=(4, 4))
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',

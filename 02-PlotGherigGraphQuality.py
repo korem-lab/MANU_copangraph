@@ -5,16 +5,18 @@ import glob
 import pandas as pd
 import Utils.GraphQualityPlotting as plot
 
-RESULTS_PATH = "/manitou/pmg/users/ic2465/Projects/MANU_copangraph_2022/data/GherigGraphQuality/single_sample_analysis"
+RESULTS_PATH = "/manitou/pmg/projects/korem_lab/Projects/MANU_copangraph/GherigGraphQuality/coassemblies"
+RESULTS_PATH_SS = "/manitou/pmg/projects/korem_lab/Projects/MANU_copangraph/GherigGraphQuality/single_sample_analysis"
 CO = 'coasm_cocpg_alllr'
 SS = 'ssasm_sscpg_sslr'
 
 if __name__ == '__main__':
     
-    ss_quality = glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_quality.csv'))
+    ss_quality = glob.glob(os.path.join(RESULTS_PATH_SS, f'*{SS}*_quality.csv'))
     #ss_complexity = glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_complexity.csv'))
     #ss_nX= glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_nX.csv'))
     #co_quality = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_quality.csv'))
+    #print(co_quality)
     #co_complexity = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_complexity.csv'))
     #co_nX = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_nX.csv'))
     #print(co_quality)
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     #co_nX = pd.concat([pd.read_csv(e) for e in co_nX], ignore_index=True)
    
     # write 
-    ss_quality.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_quality.csv'))
+    ss_quality.to_csv(os.path.join(RESULTS_PATH_SS, f'{SS}_all_quality.csv'))
     #ss_complexity.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_complexity.csv'))
     #ss_nX.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_nX.csv'))
     #co_quality.to_csv(os.path.join(RESULTS_PATH, f'{CO}_all_quality.csv'))
@@ -37,12 +39,12 @@ if __name__ == '__main__':
     
     # Plot single-sample distributions 
     # Recall boxplots across the 10 datasets for coverage connectivity
-    plot.ss_quality(RESULTS_PATH, SS, 'cov_F-score', ss_quality)
-    plot.ss_quality(RESULTS_PATH, SS, 'cov_recall', ss_quality)
-    plot.ss_quality(RESULTS_PATH, SS, 'cov_precision', ss_quality)
-    plot.ss_quality(RESULTS_PATH, SS, 'cnx_F-score', ss_quality)
-    plot.ss_quality(RESULTS_PATH, SS, 'cnx_recall', ss_quality)
-    plot.ss_quality(RESULTS_PATH, SS, 'cnx_precision', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cov_F-score', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cov_recall', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cov_precision', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cnx_F-score', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cnx_recall', ss_quality)
+    plot.ss_quality(RESULTS_PATH_SS, SS, 'cnx_precision', ss_quality)
     # Nodes and edges boxplots across the 10 datasets
     #plot.ss_complexity(RESULTS_PATH, f'{ASM}_ss_complexity', ss_complexity)
     # N50 / N90 boxplots
