@@ -3,15 +3,25 @@ import sys
 import os
 import glob
 import numpy as np
+from tqdm import tqdm
 from collections import defaultdict
 import pandas as pd
 import re
+import random
 
 K=21
 
 def lex_low(k):
     rc = ''.join([{'A':'T', 'C':'G', 'G':'C', 'T':'A'}[e] for e in k][::-1])
     return k if k < rc else rc
+
+def rev_comp(s):
+    return ''.join([{'A':'T', 'C':'G', 'G':'C', 'T':'A'}[e] for e in s][::-1])
+
+def draw_random_kmer(s, K=15):
+    draw = random.randint(0, len(s)-K)
+    return lex_low(s[draw: draw+K])
+
 
 def kmer_to_sample(sample_list, mode):
 
@@ -31,13 +41,24 @@ def kmer_to_sample(sample_list, mode):
 
     return k2s
 
+def get_kmer_sets(genome_list, K=15):
+    kmer_sets = list()
+    for i, g in tqdm(enumerate(genome_list)):
+        kmer_sets.append(set())
+        with open(g) as f:
+            for fa in ps.parse(f, ps.Fasta):
+                for j in range(len(fa.seq)-K+1):
+                    kmer = lex_low(fa.seq[j: j+K])
+                    kmer_sets[i].add(kmer)
+    return kmer_sets
 
-def kmer_to_nodes(graph_file):
-
+def parse_graph_to_node2seq(graph_file):
     if graph_file.endswith('.gfa'):
         is_copan = True
-    else:
+    elif graph_file.endswith('.fastg'):
         is_copan = False
+    else:
+        AssertionError
     
     with open(graph_file) as f:
         if is_copan:
@@ -50,7 +71,7 @@ def kmer_to_nodes(graph_file):
     for fa in data:
         if is_copan:
             key = fa.nid # node name
-            n2seq[key].append(fa.seq)
+            n2seq[key].append(fa)
         else:
             # fastq files output by megahit_toolkit have 
             # each node duplicated in reverse complement
@@ -59,8 +80,58 @@ def kmer_to_nodes(graph_file):
             # it doesn't matter for calculation)
             key = re.findall('(NODE_[0-9]+)_', fa.hdr).pop(0)
             if key not in n2seq:
-                n2seq[key].append(fa.seq)
+                n2seq[key].append(fa)
+    return n2seq
 
+def seq_in_genome_mixing(graph_file, genome_files, tool, kmer_sets, candidate_its=1):
+    genomes = list()
+    for fl in genome_files:
+        with open(fl) as f:
+            for e in ps.parse(f, ps.Fasta):
+                genomes.append(e)
+    print('Num genomes read: ', len(genomes))
+    if kmer_sets is None:
+        print('Building kmer sets...', len(genomes))
+        kmer_sets = get_kmer_sets(genome_files)
+    print('parsing graph...')
+    n2seq = parse_graph_to_node2seq(graph_file)
+    data = list()
+    for k, v in tqdm(n2seq.items()):
+        max_bp = -1
+        total_bp = 0
+        unmapped_bp = 0
+        genomes_in = set()
+        for e in v:
+            sequence_unmapped=True
+            for i, g in enumerate(genomes):
+                it = 0
+                candidate = True
+                while it < candidate_its:
+                    if draw_random_kmer(e.seq) not in kmer_sets[i]:
+                        candidate = False
+                    if not candidate: 
+                        break
+                    it += 1
+                if candidate:
+                    mapped = (g.seq.find(e.seq) != -1 or g.seq.find(rev_comp(e.seq)) != -1)
+                    if mapped:
+                        genomes_in.add(i)
+                        sequence_unmapped=False
+            if sequence_unmapped:
+                unmapped_bp += len(e.seq)
+        for e in v:
+            if len(e.seq) > max_bp:
+                max_bp = len(e.seq)
+            total_bp += len(e.seq)
+        data.append([k, len(v), total_bp, max_bp, len(genomes_in) > 1,  len(genomes_in) == 1, unmapped_bp>0, unmapped_bp, len(genomes_in), tool])
+    return pd.DataFrame(data, columns = [
+            'nid', 'num_seqs', 'total_bp', 'max_bp', 'is_multi_genome', 'is_single_genome', 
+            'has_unmapped', 'unmapped_bp', 'num_genomes_in', 'tool'
+            ])
+
+
+def kmer_to_nodes(graph_file):
+    n2seq = parse_graph_to_node2seq(graph_file)
     k2n = defaultdict(int) 
     for _,v in n2seq.items():
         in_node = set()
@@ -110,6 +181,28 @@ def num_nodes(graph_file):
             nodes.add(key)
 
     return len(nodes)
+
+def n50(graph_file):
+
+    if graph_file.endswith('.gfa'):
+        is_copan = True
+    else:
+        is_copan = False
+    
+    with open(graph_file) as f:
+        if is_copan:
+            data = list(e for e in ps.parse_gfa(f) if e.type == ps.GFATypes.S)
+        else:
+            data = list(ps.parse(f, ps.Fasta))
+
+    # organize sequences by node
+    data = sorted(data, key=lambda x: len(x.seq), reverse=True)
+    total_50 = sum(len(e.seq) for e in data)/2
+    cum_sum= 0 
+    for e in data:
+        cum_sum += len(e.seq)
+        if cum_sum >= total_50:
+            return len(e.seq)
 
 def mixing(graph_file, k2s):
 
