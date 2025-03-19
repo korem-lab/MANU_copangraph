@@ -30,6 +30,8 @@ class GFASegment(GFA):
 
     def __repr__(self):
         return f'GFASegment(nid={self.nid}, seq={self.seq[:10]})'
+    def __len__(self):
+        return len(self.seq)
 
     def write(self, f):
         f.write(

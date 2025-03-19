@@ -5,12 +5,16 @@ import glob
 import numpy as np
 from tqdm import tqdm
 from collections import defaultdict
+from multiprocessing import Pool as PPool
+from functools import partial
 import pandas as pd
 import re
 import random
 
 K=21
 
+genomes = list()
+ks = None
 def lex_low(k):
     rc = ''.join([{'A':'T', 'C':'G', 'G':'C', 'T':'A'}[e] for e in k][::-1])
     return k if k < rc else rc
@@ -82,6 +86,84 @@ def parse_graph_to_node2seq(graph_file):
             if key not in n2seq:
                 n2seq[key].append(fa)
     return n2seq
+
+def get_mapping_coords(candidate_its, data):
+    k, v = data
+    mapping_coords = list()
+    for e in v:
+        sequence_unmapped=True
+        for i, g in enumerate(genomes):
+            it = 0
+            candidate = True
+            while it < candidate_its:
+                if draw_random_kmer(e.seq) not in ks[i]:
+                    candidate = False
+                if not candidate: 
+                    break
+                it += 1
+            if candidate:
+                mapped = g.seq.find(e.seq)
+                if mapped == -1:
+                    mapped = g.seq.find(rev_comp(e.seq))
+                if mapped != -1:
+                    mapping_coords.append( (i, k, mapped, mapped+len(e)) )
+    return mapping_coords
+
+def covered_positions(graph_file, genome_files, candidate_its=1, threads=1):
+    global genomes
+    global ks
+    for fl in genome_files:
+        with open(fl) as f:
+            for e in ps.parse(f, ps.Fasta):
+                genomes.append(e)
+    print('Num genomes read: ', len(genomes))
+    if ks is None:
+        print('Building kmer sets...', len(genomes))
+        ks = get_kmer_sets(genome_files)
+    print('parsing graph...')
+    n2seq = parse_graph_to_node2seq(graph_file)
+    data = list()
+    with PPool(processes=threads) as pool:
+        print('mapping')
+        mapping_coords = pool.map(partial(get_mapping_coords, candidate_its), n2seq.items(), chunksize=int(len(n2seq)/threads))
+    #mapping_coords = list()
+    #for k, v in tqdm(n2seq.items()):
+    #    mc = list()
+    #    for e in v:
+    #        sequence_unmapped=True
+    #        for i, g in enumerate(genomes):
+    #            it = 0
+    #            candidate = True
+    #            while it < candidate_its:
+    #                if draw_random_kmer(e.seq) not in ks[i]:
+    #                    candidate = False
+    #                if not candidate: 
+    #                    break
+    #                it += 1
+    #            if candidate:
+    #                mapped = g.seq.find(e.seq)
+    #                if mapped == -1:
+    #                    mapped = g.seq.find(rev_comp(e.seq))
+    #                if mapped != -1:
+    #                    mc.append( (i, k, mapped, mapped+len(e)) )
+    #   mapping_coords.append(mc)
+    # set up genome coverage counts
+    coverage_vectors = list()
+    for g in genomes:
+        coverage_vectors.append(
+            np.full(len(g.seq), 0, dtype=np.uint8)
+        )
+    for coords in mapping_coords:
+        for (genome, node, start, end) in coords:
+            coverage_vectors[genome][start:end] += 1
+    df = pd.DataFrame(columns = ['genome', 'total_bp', 'tp', 'fp', 'fn', 'file'])
+    for i in range(len(genomes)):
+        df.loc[len(df), :] = [genomes[i].hdr, len(genomes[i].seq), (coverage_vectors[i] == 1).sum(), (coverage_vectors[i] == 0).sum(), (coverage_vectors[i] > 1).sum(), graph_file]
+    genomes = list()
+    return df
+
+
+    
 
 def seq_in_genome_mixing(graph_file, genome_files, tool, kmer_sets, candidate_its=1):
     genomes = list()
@@ -181,6 +263,36 @@ def num_nodes(graph_file):
             nodes.add(key)
 
     return len(nodes)
+
+def num_edges(graph_file):
+    print(graph_file)
+
+    if graph_file.endswith('.gfa'):
+        is_copan = True
+    else:
+        is_copan = False
+    
+    with open(graph_file) as f:
+        if is_copan:
+            data = list(e for e in ps.parse_gfa(f) if e.type == ps.GFATypes.L)
+            return len(data)
+        else:
+            edges = set()
+            self_edge = set()
+            for e in tqdm(ps.parse(f, ps.Fasta)):
+                try:
+                    in_node, *rest = re.findall(r'[>,:](NODE_[0-9]+)', '>'+ e.hdr)
+                except ValueError:
+                    print(e.hdr)
+                    Exception
+                for out_node in rest:
+                    if in_node != out_node:
+                        edges.add((in_node, out_node))
+                        edges.add((out_node, in_node))
+                    else:
+                        self_edge.add((in_node, out_node))
+            return int(len(edges)/2 + len(self_edge))
+    
 
 def n50(graph_file):
 
