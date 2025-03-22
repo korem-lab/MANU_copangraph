@@ -15,9 +15,11 @@ Alignment = namedtuple('Alignment', ['contig_name', 'start', 'end', 'genome', 'c
 
 def get_top_alignments(alignments, mode='is_primary'):
     assert mode in [
-        'is_primary', 'mapq', 'AS'
+        'is_primary', 'mapq', 'AS', 'accept_all'
     ]
 
+    if mode == 'accept_all':
+        return set(range(len(alignments)))
     top_alignments = set()
     if mode == 'is_primary':
         for i, a in enumerate(alignments):
@@ -64,16 +66,22 @@ def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_a
         g: {'genome': g, 'assembler': asm_name, 'metric': 'cov_fn', 'value': 0} for g in genomes
     }
 
-    fun = functools.partial(get_genome_cov, g_to_aln_index, genome_lens, contig_map, alignments) 
-    with PPool(processes=32) as pool:
-        ret = pool.map(fun, enumerate(genomes))
-        for dat in ret:
-            if dat is None:
-                continue
-            g, tp, fn, fp = dat
-            tp_records[g]['value'] = tp
-            fn_records[g]['value'] = fn
-            fp_records[g]['value'] = fp
+    #fun = functools.partial(get_genome_cov, g_to_aln_index, genome_lens, contig_map, alignments) 
+    for (i, g) in tqdm.tqdm(enumerate(genomes)):
+        g, tp, fn, fp = get_genome_cov(g_to_aln_index, genome_lens, contig_map, alignments, (i, g))
+        tp_records[g]['value'] = tp
+        fn_records[g]['value'] = fn
+        fp_records[g]['value'] = fp
+
+    #with PPool(processes=8) as pool:
+    #    ret = pool.map(fun, enumerate(genomes))
+    #    for dat in ret:
+    #        if dat is None:
+    #            continue
+    #        g, tp, fn, fp = dat
+    #        tp_records[g]['value'] = tp
+    #        fn_records[g]['value'] = fn
+    #        fp_records[g]['value'] = fp
         
 
     # contigs that fail to align to any genome
@@ -88,27 +96,40 @@ def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_a
     return list(tp_records.values()) + list(fn_records.values()) + list(fp_records.values())
         
 def get_genome_cov(g_to_aln_index, genome_lens, contig_map, alignments, dat):
-    i, g = dat
+    g_idx, g = dat
     aln_on_g = sorted(list(g_to_aln_index[g]))
     if len(aln_on_g) == 0:
-        return None
+        return (g, 0, genome_lens[g_idx], 0)
     if contig_map is None:
-        cov_vector = np.zeros(genome_lens[i], dtype=np.uint32)
+        cov_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
         for i, aln_idx in enumerate(aln_on_g):
             a = alignments[aln_idx]
             cov_vector[a.start:a.end] += 1
+    #else:
+    #    C = sp.lil_matrix((genome_lens[i], len(aln_on_g)), dtype=bool)
+    #    Index = sp.lil_matrix((len(aln_on_g), len(contig_map)), dtype=bool)
+    #    for j, aln_idx in enumerate(aln_on_g):
+    #        a = alignments[aln_idx]
+    #        C[a.start:a.end, j] = 1
+    #        Index[j, contig_map[a.contig_name]] = 1
+    #    C = sp.csr_matrix(C)
+    #    Index = sp.csr_matrix(Index)
+    #    Cov = C @ Index
+    #    Cov = (Cov > 0)
+    #    cov_vector = Cov.sum(axis=1)
     else:
-        C = sp.lil_matrix((genome_lens[i], len(aln_on_g)), dtype=bool)
-        Index = sp.lil_matrix((len(aln_on_g), len(contig_map)), dtype=bool)
-        for j, aln_idx in enumerate(aln_on_g):
-            a = alignments[aln_idx]
-            C[a.start:a.end, j] = 1
-            Index[j, contig_map[a.contig_name]] = 1
-        C = sp.csr_matrix(C)
-        Index = sp.csr_matrix(Index)
-        Cov = C @ Index
-        Cov = (Cov > 0)
-        cov_vector = Cov.sum(axis=1)
+        cov_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
+        aln_on_g = sorted([alignments[i] for i in aln_on_g], key=lambda x: x.contig_name)
+        i = 0
+        while i < len(aln_on_g)-1:
+            temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
+            temp_vector[aln_on_g[i].start: aln_on_g[i].end] = 1
+            while i + 1 < len(aln_on_g) and aln_on_g[i].contig_name == aln_on_g[i+1].contig_name:
+                temp_vector[aln_on_g[i+1].start: aln_on_g[i+1].end] = 1
+                i += 1
+            cov_vector = cov_vector + temp_vector
+            temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
+            i += 1
     return (g, np.sum(cov_vector > 0), np.sum(cov_vector == 0), np.sum(cov_vector > 1))
 
 
@@ -301,7 +322,7 @@ def compute_assembly_nX(asms, key, dataset, n_pairs):
     return nX
 
 
-def good_alignment(hit, ctg_len, mode='multiple', min_similarity=0.98, length_epsilon=0.02):
+def good_alignment(hit, ctg_len, min_similarity=0.98, length_epsilon=0.02, strict=True):
     """
     Checks whether the alignment is good enough to be considered where the contig derived from in the genome.
 
@@ -309,19 +330,23 @@ def good_alignment(hit, ctg_len, mode='multiple', min_similarity=0.98, length_ep
     The maximum allowed mismatches should also be (1 - min_similarity) % of the total sequence.
     """
 
-    possible_modes = ['multiple']
-    assert mode in possible_modes
 
     lower_bound, upper_bound = round((1 - length_epsilon) * ctg_len), round((1 + length_epsilon) * ctg_len)
     alignment_length = abs(hit.r_en - hit.r_st)
-    if alignment_length < lower_bound or alignment_length > upper_bound:
+    if not (lower_bound <= alignment_length <= upper_bound):
         return False
-
-    max_nm = int(ctg_len * (1 - min_similarity))
+    if strict:
+        min_similarity = 0.999
+    max_nm = int(ctg_len * (1.0 - min_similarity))
     if hit.NM <= max_nm:
         return True  # Then it's a good alignment
 
     return False
+
+
+
+    
+
 
 
 def align_nodes_para(aligner, g, all_alignments, dat):
@@ -339,7 +364,7 @@ def align_nodes(asm, aligner, g=None, all_alignments=True):
     alignments = list()
     unaligned_nodes = set()
     fun = functools.partial(align_nodes_para, aligner, g, all_alignments)
-    with TPool(processes=32) as pool:
+    with TPool(processes=8) as pool:
         ret = pool.map(fun, enumerate(nodes))
         for a, i in ret:
             if len(a) == 0:

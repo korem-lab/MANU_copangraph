@@ -4,11 +4,11 @@ import os
 import re
 import pandas as pd
 import numpy as np
-import scipy.stats
+from scipy.stats import wilcoxon
 import seaborn as sns
 from matplotlib import pyplot as plt
 from matplotlib.pyplot import figure
-from itertools import combinations
+from itertools import combinations, product
 
 #import evaluation.utils.constants as constants
 figure(figsize=(3, 3))
@@ -35,12 +35,28 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, compute_metric(metric, g))
     scores.to_csv(os.path.join(out_dir, f'{fname}_scores.csv'), index=None)
+    groups = {(d, a):frame for ((d, a), frame) in scores.groupby(by=['depth', 'assembler'])}
+    depths = set(scores.depth)
+    tools = set(scores.assembler)
+    stats = pd.DataFrame(columns=['tool_a', 'tool_b', 'depth', 'pval', 'statistic', 'hyp'])
+    for depth, tool_a, tool_b in product(depths, tools, tools):
+        if tool_a != 'copangraph' or tool_a == tool_b:
+            continue
+        t1 = groups[(depth, tool_a)]
+        t2 = groups[(depth, tool_b)]
+        print(t1)
+        print(t2)
+        assert(all(t1.dataset.values == t2.dataset.values))
+        res = wilcoxon(t1.value.astype(float).values, t2.value.astype(float).values, alternative='greater')
+        stats.loc[len(stats), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
+    stats.to_csv(os.path.join(out_dir, 'megahit_cov_F-score_wcox.csv'))
     # Plot line graph
     if filter_on:
         scores = scores.loc[scores.assembler == filter_on,:]
     ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True)
     if stats is not None:
-        y_max = 0.5 if 'cnx' in fname else 0.7
+        #y_max = 0.5 if 'cnx' in fname else 0.7
+        y_max = scores.value.max() + 0.1
         coldict = {'megahit_contigs':'green', 'megahit_graph':'red', 'mcvl':'orange'}
         space_dict = {'megahit_contigs':0.05, 'megahit_graph':0.075, 'mcvl':0.1}
         print(stats)
@@ -127,7 +143,7 @@ def graph_NX_by_depth(out_dir, fname, nX_df):
     plt.savefig(os.path.join(out_dir, f'{fname}_N90.pdf'), bbox_inches='tight')
     plt.clf()
 
-def ss_quality(out_dir, asm, metric, ss_quality):
+def ss_quality(out_dir, asm, metric, ss_quality, include_unmapped=True):
     """Assumes table is: 
     dataset, assembler, metric, value
     """
@@ -140,7 +156,7 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     # For each group, compute the relevant metric
     scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'dataset', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
+        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g, include_unmapped))
     scores.loc[:, 'coasm_sz'] = scores.dataset.apply(lambda x: int(re.findall('([0-9])_sample', x)[0]))
     scores.to_csv(f'{asm}_{metric}_ss_scores.csv')
     #sns.boxplot(
@@ -160,10 +176,10 @@ def ss_quality(out_dir, asm, metric, ss_quality):
     #    ax=ax
     #)
     scores = scores.loc[scores.coasm_sz == 9, :]
-    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'], palette='tab10')
     sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    plt.title(f'{metric}', fontsize=10)
     plt.ylim((None, scores['value'].max() + 0.2))
-    plt.tight_layout()
     plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}_labels.pdf'), bbox_inches='tight', dpi=1400)
 
     frame1 = plt.gca()
@@ -249,7 +265,7 @@ def ss_nX(out_dir, fname, ss_nX):
     plt.savefig(os.path.join(out_dir, f'{fname}_ss_NX.pdf'), bbox_inches='tight')
     plt.clf()
     
-def co_quality(out_dir, asm, metric, co_quality):
+def co_quality(out_dir, asm, metric, co_quality, include_unmapped=True):
     """Assumes table is: 
     coassembly, assembler, metric, value
     """
@@ -259,15 +275,17 @@ def co_quality(out_dir, asm, metric, co_quality):
     assert metric in [
         'cnx_precision', 'cnx_recall', 'cnx_F-score',
         'cov_precision', 'cov_recall', 'cov_F-score',
+        'cnx_precision_macro', 'cnx_recall_macro', 'cnx_F-score_macro',
+        'cov_precision_macro', 'cov_recall_macro', 'cov_F-score_macro',
     ]
     
     scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'coasm_sz', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
-        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g))
+        scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g, include_unmapped))
     scores.to_csv(f'{asm}_{metric}_co_scores.csv')
     sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
     plt.xticks(ticks=[3,6,9], labels=[3,6,9])
-    plt.tight_layout()
+    plt.title(f'{metric}', fontsize=10)
     plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}_labels.pdf'), dpi=1400, bbox_inches='tight')
     frame1 = plt.gca()
     frame1.axes.xaxis.set_ticklabels([])
@@ -365,48 +383,102 @@ def resource_plot(data, resource):
 #    return pd.concat([pd.read_csv(e) for e in evals if os.path.exists(e)])
 
 
-def compute_metric(metric, df):
+def compute_metric(metric, df, include_unmapped=True):
 
-    def precision(df):
-        total = (df[df.metric == 'cnx_tp'].value.sum() + df[df.metric == 'cnx_fp'].value.sum())
-        if total == 0:
-            return 1
-        return df[df.metric == 'cnx_tp'].value.sum() / total
+    if not include_unmapped:
+        df = df.loc[df.genome != '-', :]
 
-    def recall(df):
-        total = (df[df.metric == 'cnx_tp'].value.sum() + df[df.metric == 'cnx_fn'].value.sum())
-        if total == 0:
-            return 0
-        return df[df.metric == 'cnx_tp'].value.sum() / total
+    def precision(df, micro=True):
+        cnx_tp = df[df.metric == 'cnx_tp'].value
+        cnx_fp = df[df.metric == 'cnx_fp'].value
+        if micro:
+            total = cnx_tp.sum() + cnx_fp.sum()
+            if total == 0:
+                return 1
+            return cnx_tp.sum() / total
+        else:
+            total = cnx_tp + cnx_fp
+            np.divide(cnx_tp, total, out=np.zeros_like(total, dtype=float), where=total!=0)
 
-    def cov_precision(df):
-        total = (df[df.metric == 'cov_tp'].value.sum() + df[df.metric == 'cov_fp'].value.sum())
-        if total == 0:
-            return 1
-        return df[df.metric == 'cov_tp'].value.sum() / total
+    def recall(df, micro=True):
+        cnx_tp = df[df.metric == 'cnx_tp'].value
+        cnx_fn = df[df.metric == 'cnx_fn'].value
+        if micro:
+            total = cnx_tp.sum() + cnx_fn.sum()
+            if total == 0:
+                return 0
+            return cnx_tp.sum() / total
+        else:
+            total = cnx_tp + cnx_fn
+            np.divide(cnx_tp, total, out=np.zeros_like(total, dtype=float), where=total!=0)
 
-    def cov_recall(df):
-        total = (df[df.metric == 'cov_tp'].value.sum() + df[df.metric == 'cov_fn'].value.sum())
-        if total == 0:
-            return 0
-        return df[df.metric == 'cov_tp'].value.sum() / total
+    def cov_precision(df, micro=True):
+        cov_tp = df[df.metric == 'cov_tp'].value
+        cov_fp = df[df.metric == 'cov_fp'].value
+        if micro:
+            total = cov_tp.sum() + cov_fp.sum()
+            if total == 0:
+                return 1
+            return cov_tp.sum() / total
+        else:
+            total = cov_tp + cov_fp
+            np.divide(cov_tp, total, out=np.zeros_like(total, dtype=float), where=total!=0)
+
+    def cov_recall(df, micro=True):
+        cov_tp = df[df.metric == 'cov_tp'].value
+        cov_fn = df[df.metric == 'cov_fn'].value
+        if micro:
+            total = cov_tp.sum() + cov_fn.sum()
+            if total == 0:
+                return 0
+            return cov_tp.sum() / total
+        else:
+            total = cov_tp + cov_fn
+            np.divide(cov_tp, total, out=np.zeros_like(total, dtype=float), where=total!=0)
 
     if metric == 'cnx_F-score':
         p = precision(df)
         r = recall(df)
         return (2*p*r / (p + r)) if (p+r) > 0 else 0
+    elif metric == 'cnx_F-score_macro':
+        p = precision(df, micro=False)
+        r = recall(df, micro=False)
+        num = 2*p*r
+        den = p+r
+        fscore = np.divide(num, den, out=np.zeros_like(den, dtype=float), where=den!=0)
+        return np.mean(fscore)
+
     elif metric == 'cnx_precision':
         return precision(df)
+    elif metric == 'cnx_precision_macro':
+        return np.mean(precision(df, micro=False))
+
     elif metric == 'cnx_recall':
         return recall(df)
+    elif metric == 'cnx_recall_macro':
+        return np.mean(recall(df, micro=False))
+
     elif metric == 'cov_F-score':
         p = cov_precision(df)
         r = cov_recall(df)
         return (2*p*r / (p + r)) if (p+r) > 0 else 0
+    elif metric == 'cov_F-score_macro':
+        p = cov_precision(df, micro=False)
+        r = cov_recall(df, micro=False)
+        num = 2*p*r
+        den = p+r
+        fscore = np.divide(num, den, out=np.zeros_like(den, dtype=float), where=den!=0)
+        return np.mean(fscore)
+
     elif metric == 'cov_precision':
         return cov_precision(df)
+    elif metric == 'cov_precision_macro':
+        return np.mean(cov_precision(df, micro=False))
+
     elif metric == 'cov_recall':
         return cov_recall(df)
+    elif metric == 'cov_recall_macro':
+        return np.mean(cov_recall(df, micro=False))
     else:
         sys.exit(-1)
 
@@ -453,7 +525,7 @@ def plot_distribution_of_single_metric_across_datasets(data, y_label, fig_name, 
     for a in ['mcvl', 'mh_contigs', 'mh_graph']:
         print(data.loc[data.assembler == 'copangraph', 'value'].values)
         print(data.loc[data.assembler == a, 'value'].values)
-        print(scipy.stats.wilcoxon(
+        print(wilcoxon(
             x=data.loc[data.assembler == 'copangraph', 'value'].values,
             y=data.loc[data.assembler == a, 'value'].values,
             alternative='greater'

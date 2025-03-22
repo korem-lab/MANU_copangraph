@@ -103,12 +103,13 @@ if __name__ == '__main__':
 
         # Filter the alignments for the best hit per contig. Intersect all per-genome alignments with the top alignments
         # Equally good top alignments are retained
-        top_alignment_per_contig = get_top_alignments(alignments)
+        top_alignment_per_contig = get_top_alignments(alignments, mode='accept_all')
         for g in g_to_aln_idx:
             g_to_aln_idx[g] = g_to_aln_idx[g] & top_alignment_per_contig
 
         # build contig map
-        contig_map = None
+        contig_map = {name: i for i, name in enumerate(set(n for n,_ in asm.contigs))}
+        print(len(contig_map))
         print('Computing coverage metrics')
         cov_metric_records = get_coverage_metrics(
             asm_name, alignments, genomes, genome_lens, asm, g_to_aln_idx, unaligned_contig_indicies, contig_map
