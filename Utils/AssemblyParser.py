@@ -6,13 +6,13 @@ import Utils.parse_seq as parse_seq
 import tqdm
 from scipy import sparse as sp
 
-
 class Assembly:
     def __init__(self, assembler, assembly_file):
 
         self.assembler = assembler
         # get the file extension
         _, ext = os.path.splitext(assembly_file)
+        print(assembly_file)
         assert (os.path.exists(assembly_file))
 
         # parse the assembly file into an adjacency matrix and the lis of contig
@@ -131,6 +131,12 @@ class Assembly:
         print(f'missed edges:', n_missed)
 
         return adjM_df
+    
+    def get_max_node_lens(self):
+        df = pd.DataFrame(self.contigs, columns=['node_id', 'seq'])
+        df['seq_len'] = df.seq.apply(lambda x: len(x))
+        df = df.groupby('node_id').apply(lambda x: x.seq_len.max())
+        return df
 
     #def build_adjM(self, nodes, edges):
 

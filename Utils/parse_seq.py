@@ -2,7 +2,9 @@ FASTA_HEADER_PREF = '>'
 FIELD_DELIMITER = ';'
 FASTG_NODE_DELIMITER = ':'
 import sys
-
+import numpy as np
+MAX_FOLD = np.iinfo(np.uint64).max
+import random
 
 def mappy_alignment_to_sam(qname, seq, a):
     return '\t'.join(
@@ -125,7 +127,7 @@ def parse(fs, fa_cls, *args, **kwargs):
             break
 
 class Fasta:
-    def __init__(self, hdr, seq, fold=80):
+    def __init__(self, hdr, seq, fold=MAX_FOLD):
         self.hdr = hdr
         self.seq = seq
         self.fold = fold
@@ -142,6 +144,11 @@ class Fasta:
 
     def __len__(self):
         return len(self.seq)
+
+class MegaHITFasta(Fasta):
+    def __init__(self, hdr, seq, fold=80):
+        super().__init__(hdr, seq, fold)
+        self.cn , *self.rest = hdr.split(' ')
 
 
 class Fastg(Fasta):
@@ -227,6 +234,41 @@ class RandomAccessFastq:
             cur = self.fs.tell()
         return starts[::4]
 
+
+def subsample_reads(fq1, fq2, out1, out2, total, required, seed):
+    random.seed(seed)
+    
+    proportion = required/float(total)
+    print(total, required, proportion)
+    assert 0 <= proportion <= 1
+
+    get_read = lambda x: '\n'.join(x.readline().strip() for _ in range(4)).strip()
+    extracted, total = 0, 0
+
+    with open(fq1) as f1, open(fq2) as f2, open(out1, 'w') as o1, open(out2, 'w') as o2:
+        while True:
+            read1, read2 = get_read(f1), get_read(f2)
+            # end of file
+            if read1 == '' and read2 == '':
+                break
+            total+=1
+            # write all
+            if proportion == 1:
+                o1.write(read1 + '\n')
+                o2.write(read2 + '\n')
+                continue
+
+            # write proportion
+            draw = random.uniform(0, 1)
+            if draw <= proportion:
+                o1.write(read1 + '\n')
+                o2.write(read2 + '\n')
+                extracted += 1
+    with open(f'{out1}.seed', 'w') as os1, open(f'{out2}.seed', 'w') as os2:
+        os1.write(str(seed)), os2.write(str(seed))
+
+    print(f'Out of {total} reads, subsampled {total if proportion == 1 else extracted}, which is {extracted/total*100 if proportion !=1 else 100}%')
+            
 
 if __name__ == '__main__':
     raf = RandomAccessFastq('dump')

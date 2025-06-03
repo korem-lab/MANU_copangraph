@@ -44,32 +44,36 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
             continue
         t1 = groups[(depth, tool_a)]
         t2 = groups[(depth, tool_b)]
-        print(t1)
-        print(t2)
         assert(all(t1.dataset.values == t2.dataset.values))
-        res = wilcoxon(t1.value.astype(float).values, t2.value.astype(float).values, alternative='greater')
-        stats.loc[len(stats), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
-    stats.to_csv(os.path.join(out_dir, 'megahit_cov_F-score_wcox.csv'))
+        try:
+            res = wilcoxon(t1.value.astype(float).values, t2.value.astype(float).values, alternative='greater')
+            stats.loc[len(stats), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'greater']
+            res = wilcoxon(t1.value.astype(float).values, t2.value.astype(float).values, alternative='two-sided')
+            stats.loc[len(stats), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'two-sided']
+        except ValueError:
+            stats.loc[len(stats), :] = [tool_a, tool_b, depth, 1, 0, 'greater']
+    stats.to_csv(os.path.join(out_dir, f'megahit_{metric}_wcox.csv'))
     # Plot line graph
     if filter_on:
         scores = scores.loc[scores.assembler == filter_on,:]
-    ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True)
+    ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True, errorbar='sd')
+
     if stats is not None:
         #y_max = 0.5 if 'cnx' in fname else 0.7
-        y_max = scores.value.max() + 0.1
+        y_pos = scores.groupby(['assembler', 'depth']).apply(lambda x: x.value.mean() + x.value.std()).max()
         coldict = {'megahit_contigs':'green', 'megahit_graph':'red', 'mcvl':'orange'}
-        space_dict = {'megahit_contigs':0.05, 'megahit_graph':0.075, 'mcvl':0.1}
-        print(stats)
+        space_dict = {'megahit_contigs':0.00, 'megahit_graph':0.025, 'mcvl':0.05}
+        stats = stats.loc[stats.hyp == 'greater',:]
         for i in stats.index:
             tool = stats.loc[i, 'tool_b']
             pval = stats.loc[i, 'pval']
-            if pval > 0.05:
+            if pval >= 0.05:
                 symbol = ''
             else:
                 symbol = '*'
             depth = int(stats.loc[i, 'depth'])
-            ax.text(depth, y_max + space_dict[tool], symbol, color=coldict[tool])
-        ax.set_ylim(top=y_max+0.15)
+            ax.text(depth, y_pos + space_dict[tool], symbol, color=coldict[tool])
+        ax.set_ylim(top=y_pos+0.1)
 
     # put ticks at exact measurement position 
     ax.set_xlabel('Read pairs')
@@ -158,7 +162,7 @@ def ss_quality(out_dir, asm, metric, ss_quality, include_unmapped=True):
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g, include_unmapped))
     scores.loc[:, 'coasm_sz'] = scores.dataset.apply(lambda x: int(re.findall('([0-9])_sample', x)[0]))
-    scores.to_csv(f'{asm}_{metric}_ss_scores.csv')
+    scores.to_csv(os.path.join(out_dir, f'{asm}_{metric}_ss_scores.csv'))
     #sns.boxplot(
     #    showmeans=True,
     #    meanline=True,
@@ -282,10 +286,12 @@ def co_quality(out_dir, asm, metric, co_quality, include_unmapped=True):
     scores = pd.DataFrame(index=range(len(groups)), columns=['assembler', 'coasm_sz', 'metric', 'value'])
     for i, (fields, g) in enumerate(groups):
         scores.iloc[i, :] = (*fields, metric, compute_metric(metric, g, include_unmapped))
-    scores.to_csv(f'{asm}_{metric}_co_scores.csv')
-    sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
+    scores.to_csv(os.path.join(out_dir, f'{asm}_{metric}_co_scores.csv'))
+    ax=sns.lineplot(x=(scores['coasm_sz'].astype(np.float64)), y=scores['value'], hue=scores['assembler'], legend=True)
     plt.xticks(ticks=[3,6,9], labels=[3,6,9])
     plt.title(f'{metric}', fontsize=10)
+    if 'precision' in metric:
+        ax.set_ylim(bottom=0.75)
     plt.savefig(os.path.join(out_dir, f'{asm}_co_{metric}_labels.pdf'), dpi=1400, bbox_inches='tight')
     frame1 = plt.gca()
     frame1.axes.xaxis.set_ticklabels([])

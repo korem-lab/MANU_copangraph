@@ -1,4 +1,5 @@
 import numpy as np
+import Utils.parse_seq as ps
 import pandas as pd
 from intervaltree import IntervalTree, Interval
 from collections import defaultdict, namedtuple
@@ -8,10 +9,74 @@ from scipy import sparse as sp
 import tqdm
 from multiprocessing.dummy import Pool as TPool
 from multiprocessing import Pool as PPool
+from concurrent.futures import ThreadPoolExecutor as TP
 import functools
 
-Alignment = namedtuple('Alignment', ['contig_name', 'start', 'end', 'genome', 'contig_len', 'is_primary'])
+Alignment = namedtuple('Alignment', ['contig_name', 'start', 'end', 'genome', 'contig_len', 'is_primary', 'sam'])
 
+def rev_comp(s):
+    return ''.join(
+        {'A':'T', 'T':'A', 'C':'G','G':'C'}[e] for e in s[::-1]
+    )
+
+def paf_to_sam(paf_line, seq):
+    """
+    Convert a single PAF line to a simplified SAM line.
+
+    :param paf_line: str, a single line from a PAF file
+    :return: str, corresponding SAM line
+    """
+    fields = paf_line.strip().split('\t')
+    if len(fields) < 12:
+        raise ValueError("PAF line must have at least 12 fields")
+
+    qname = fields[0].replace(' ', '_').replace('flag=', 'f')
+    qlen = int(fields[1])
+    qstart = int(fields[2])+1
+    qend = int(fields[3])+1
+    strand = fields[4]
+    rname = fields[5]
+    rlen = int(fields[6])
+    rstart = int(fields[7])+1
+    rend = int(fields[8])+1
+    match_len = int(fields[9])
+    aln_len = int(fields[10])
+    mapq = int(fields[11])
+    cigar = fields[14].split(':')[-1]
+
+
+    # Strand
+    flag = 0 if strand == '+' else 16
+
+    # POS: SAM is 1-based, PAF is 0-based
+    pos = rstart
+
+    # CIGAR: simplified to match_len + softclips (not exact)
+    # This is highly simplified and not always accurate
+
+    # RNEXT, PNEXT, TLEN are unknown
+    rnext = "*"
+    pnext = 0
+    tlen = qlen
+
+    # Sequence and quality are unknown in PAF
+    qual = "*"
+
+    sam_fields = [
+        qname,         # QNAME
+        str(flag),     # FLAG
+        rname,         # RNAME
+        str(pos),      # POS
+        str(mapq),     # MAPQ
+        cigar,         # CIGAR
+        rnext,         # RNEXT
+        str(pnext),    # PNEXT
+        str(tlen),     # TLEN
+        seq[qstart-1:qend-1] if strand == '+' else rev_comp(seq[qstart-1:qend-1]),           # SEQ
+        qual           # QUAL
+    ]
+
+    return '\t'.join(sam_fields)
 
 def get_top_alignments(alignments, mode='is_primary'):
     assert mode in [
@@ -49,7 +114,7 @@ def get_top_alignments(alignments, mode='is_primary'):
     return top_alignments
 
 
-def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_aln_index, unassigned_contigs, contig_map, minimap_kmer_size=15):
+def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_aln_index, unassigned_contigs, contig_map, minimap_kmer_size=15, disregard_unmapped=True):
     # get record objects
     tp_records = {
         g: {'genome': g, 'assembler': asm_name, 'metric': 'cov_tp', 'value': 0} for g in genomes
@@ -67,31 +132,26 @@ def get_coverage_metrics(asm_name, alignments, genomes, genome_lens, asm, g_to_a
     }
 
     #fun = functools.partial(get_genome_cov, g_to_aln_index, genome_lens, contig_map, alignments) 
+    total_bp = 0
+    covered_bp = 0
     for (i, g) in tqdm.tqdm(enumerate(genomes)):
         g, tp, fn, fp = get_genome_cov(g_to_aln_index, genome_lens, contig_map, alignments, (i, g))
+        covered_bp += tp
+        total_bp += genome_lens[i]
         tp_records[g]['value'] = tp
         fn_records[g]['value'] = fn
         fp_records[g]['value'] = fp
-
-    #with PPool(processes=8) as pool:
-    #    ret = pool.map(fun, enumerate(genomes))
-    #    for dat in ret:
-    #        if dat is None:
-    #            continue
-    #        g, tp, fn, fp = dat
-    #        tp_records[g]['value'] = tp
-    #        fn_records[g]['value'] = fn
-    #        fp_records[g]['value'] = fp
-        
+    print('PROP COVERED: ', covered_bp/total_bp)
 
     # contigs that fail to align to any genome
-    num_unassigned_bp = 0
-    for idx in unassigned_contigs:
-        n, seq = asm.contigs[idx]
-        if len(seq) < minimap_kmer_size:
-            continue
-        num_unassigned_bp += len(seq)
-    fp_records['-']['value'] = num_unassigned_bp
+    if not disregard_unmapped:
+        num_unassigned_bp = 0
+        for idx in unassigned_contigs:
+            n, seq = asm.contigs[idx]
+            if len(seq) < minimap_kmer_size:
+                continue
+            num_unassigned_bp += len(seq)
+        fp_records['-']['value'] = num_unassigned_bp
 
     return list(tp_records.values()) + list(fn_records.values()) + list(fp_records.values())
         
@@ -105,31 +165,23 @@ def get_genome_cov(g_to_aln_index, genome_lens, contig_map, alignments, dat):
         for i, aln_idx in enumerate(aln_on_g):
             a = alignments[aln_idx]
             cov_vector[a.start:a.end] += 1
-    #else:
-    #    C = sp.lil_matrix((genome_lens[i], len(aln_on_g)), dtype=bool)
-    #    Index = sp.lil_matrix((len(aln_on_g), len(contig_map)), dtype=bool)
-    #    for j, aln_idx in enumerate(aln_on_g):
-    #        a = alignments[aln_idx]
-    #        C[a.start:a.end, j] = 1
-    #        Index[j, contig_map[a.contig_name]] = 1
-    #    C = sp.csr_matrix(C)
-    #    Index = sp.csr_matrix(Index)
-    #    Cov = C @ Index
-    #    Cov = (Cov > 0)
-    #    cov_vector = Cov.sum(axis=1)
     else:
         cov_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
         aln_on_g = sorted([alignments[i] for i in aln_on_g], key=lambda x: x.contig_name)
         i = 0
-        while i < len(aln_on_g)-1:
-            temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
-            temp_vector[aln_on_g[i].start: aln_on_g[i].end] = 1
-            while i + 1 < len(aln_on_g) and aln_on_g[i].contig_name == aln_on_g[i+1].contig_name:
-                temp_vector[aln_on_g[i+1].start: aln_on_g[i+1].end] = 1
+        if len(aln_on_g) == 1:
+            a = alignments[i]
+            cov_vector[a.start:a.end] += 1
+        else:
+            while i < len(aln_on_g)-1:
+                temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
+                temp_vector[aln_on_g[i].start: aln_on_g[i].end] = 1
+                while i + 1 < len(aln_on_g) and aln_on_g[i].contig_name == aln_on_g[i+1].contig_name:
+                    temp_vector[aln_on_g[i+1].start: aln_on_g[i+1].end] = 1
+                    i += 1
+                cov_vector = cov_vector + temp_vector
+                temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
                 i += 1
-            cov_vector = cov_vector + temp_vector
-            temp_vector = np.zeros(genome_lens[g_idx], dtype=np.uint32)
-            i += 1
     return (g, np.sum(cov_vector > 0), np.sum(cov_vector == 0), np.sum(cov_vector > 1))
 
 
@@ -143,8 +195,13 @@ def get_connectivity_metrics(
         asm,
         assembly_artifact_gap,
         window_sz,
-        unaligned
+        unaligned,
+        mh_graph_asm=None,
+        mh_contig_to_node=None,
+        copan_node_to_contig=None,
+        mode='never_disregard_unmapped'
 ):
+    
     # get record objects
     tp_records = {
         g: {'genome': g, 'assembler': asm_name, 'metric': 'cnx_tp', 'value': 0} for g in genomes
@@ -160,11 +217,64 @@ def get_connectivity_metrics(
     # iterate edges and count FP
     print('Computing FP...')
     unaligned = {asm.contigs[i][0] for i in unaligned}
-    for u, v in tqdm.tqdm(zip(asm.adjM.index[r], asm.adjM.index[c])):
+    total_edges = 0
+    both_unmapped = 0
+    one_unmapped = 0
+    both_mapped =0
 
-        # If the edge involves an unaligned contig, we cannot measure its status
-        if u in unaligned or v in unaligned:
-           continue
+
+    def edge_in_megahit_graph(name, u, v, mh_graph_asm, copan_node_to_contig, mh_contig_to_node):
+        if mh_graph_asm is None:
+            return True
+        if name == 'copangraph':
+            u_contig = copan_node_to_contig[u]
+            v_contig = copan_node_to_contig[v]
+            u_mh = mh_contig_to_node[u_contig]
+            v_mh = mh_contig_to_node[v_contig]
+            u_mh = mh_graph_asm.adjM.index[mh_graph_asm.adjM.index.to_series().apply(lambda x: f'{u_mh[1:]}_' in x)][0]
+            v_mh = mh_graph_asm.adjM.index[mh_graph_asm.adjM.index.to_series().apply(lambda x: f'{v_mh[1:]}_' in x)][0]
+            return mh_graph_asm.adjM.loc[u_mh, v_mh] or mh_graph_asm.adjM.loc[v_mh, u_mh]
+        elif name == 'megahit_graph':
+            return mh_graph_asm.adjM.loc[u, v] or mh_graph_asm.adjM.loc[v,u]
+        else:
+            return False
+
+
+    for u, v in tqdm.tqdm(zip(asm.adjM.index[r], asm.adjM.index[c])):
+        total_edges += 1
+
+        # If the edge involves an unaligned contig can
+        # chose to consider it a false positive by default, or consider it unmeasureable
+        u_aln = node_to_aln_idx[u]
+        v_aln = node_to_aln_idx[v]
+
+
+        if len(v_aln) == 0 and len(u_aln) == 0:
+            both_unmapped += 1
+        elif (len(v_aln) != len(u_aln)) and (len(u_aln) == 0 or len(v_aln) == 0):
+            one_unmapped += 1
+        else:
+            both_mapped += 1
+
+        if mode == 'disregard_if_any_unmapped':
+            # If node u or node v has no mapped sequences
+            # then cannot measure if fp status
+            if len(v_aln) == 0 or len(u_aln) == 0:
+                continue
+        elif mode == 'disregard_if_both_unmapped':
+            # if both u and v are unmapped, disregard, otherwise,
+            # call it a false positve if one is mapped
+            if len(v_aln) == 0 and len(u_aln) == 0:
+                continue
+            elif len(v_aln) == 0 ^ len(u_aln) == 0:
+                fp_record['value'] += 1
+        elif mode == 'never_disregard_unmapped':
+            if len(v_aln) == 0 or len(u_aln) == 0:
+                fp_record['value'] += 1
+                if not edge_in_megahit_graph(asm_name, u, v, mh_graph_asm, copan_node_to_contig, mh_contig_to_node):
+                    print('FP NOT IN MH UNMAPPED: ', u, v)
+                continue
+        
 
         valid_edge = False
         for g in genomes:
@@ -180,34 +290,43 @@ def get_connectivity_metrics(
 
             # there needs to be at least one position on g, for which, u,v are in close proximity
             # for the edge to be explained by genome g
-            if check_proximity(u_alns, v_alns, alignments, assembly_artifact_gap):
+            contiguous, pos = check_proximity(u_alns, v_alns, alignments, assembly_artifact_gap)
+            if contiguous:
                 valid_edge = True
                 break  # job done, edge can't be a fp
 
         # then unexplained by any genome
         if not valid_edge:
             fp_record['value'] += 1
-
-
+            if not edge_in_megahit_graph(asm_name, u, v, mh_graph_asm, copan_node_to_contig, mh_contig_to_node):
+                print('FP NOT IN MH MAPPED: ', u, v)
+    if total_edges != 0:
+        print('Proportion both mapped: ', both_mapped/total_edges)
+        print('Proportion neither mapped: ', both_unmapped/total_edges)
+        print('Proportion one mapped: ', one_unmapped/total_edges)
     # iterate through genomes and compute TP/FN
     print('Computing TP...')
+    tp_bed_records = list()
+    fn_bed_records = list()
     for g in tqdm.tqdm(genomes):
         alns_on_g = [alignments[a] for a in g_to_aln_idx[g]]
         consensus_breakpoints = breakpoint_dict[g]
         ivl_tree = make_interval_tree(alns_on_g)
         for bp in consensus_breakpoints:
-            left_bound, right_bound = bp - window_sz, bp + window_sz
+            left_bound, right_bound = bp - window_sz, bp + window_sz 
             exists, path = path_exists(
                 ivl_tree[left_bound: right_bound], left_bound, right_bound,
                 asm.adjM, assembly_artifact_gap, record_path=False
             )
             if exists:
                 tp_records[g]['value'] += 1
+                tp_bed_records.append(f'{g}\t{bp}\t{bp+1}')
             else:
                 fn_records[g]['value'] += 1
+                fn_bed_records.append(f'{g}\t{bp}\t{bp+1}')
 
     total_records = list(tp_records.values()) + [fp_record] + list(fn_records.values())
-    return total_records
+    return total_records, tp_bed_records, fn_bed_records
 
 
 def make_interval_tree(alns):
@@ -275,7 +394,7 @@ def search(u, nodes, right_bound, adjM, failed_from, aag, path=None):
     return exists
 
 
-def check_proximity(u_alns, v_alns, alignments, aag):
+def check_proximity(u_alns, v_alns, alignments, aag, asm_name=None):
     gap_distances = list()
     for u_aln, v_aln in product(u_alns, v_alns):
         u_aln, v_aln = alignments[u_aln], alignments[v_aln]
@@ -283,46 +402,28 @@ def check_proximity(u_alns, v_alns, alignments, aag):
         assert(v_aln.start <= v_aln.end)
         # We don't know whether u comes before v or v before u in this pair.
         # Do we take the minimum of "gap" between end and start in both orientations
-        gap_distance = min(abs(u_aln.end - v_aln.start), abs(u_aln.start - v_aln.end))
-        gap_distances.append(gap_distance)
-    return min(gap_distances) <= aag
+        #gap_distance = min(abs(u_aln.end - v_aln.start), abs(u_aln.start - v_aln.end))
+        gd = abs(u_aln.end - v_aln.start)
+        pos = (u_aln.end, v_aln.start)
+        if abs(u_aln.start - v_aln.end) < gd:
+            gd = abs(u_aln.start - v_aln.end) 
+            pos = (u_aln.start, v_aln.end)
+        gap_distances.append((gd, pos))
+    if asm_name:
+        print(f'{asm_name} GAPDIST:', min(gap_distances))
+    #return min(gap_distances) <= aag
+    mgd, mpos = sorted(gap_distances, key=lambda x: x[0])[0]
+    return mgd <= aag, mpos
 
-
-def compute_assembly_complexity(asms, key, dataset, n_pairs):
-    # Count number of nodes and edges for each analysis and output to disk
-    complexity = pd.DataFrame(index=asms.keys(), columns=['key', 'dataset', 'depth', 'num_nodes', 'num_edges'])
-    for a in asms.values():
-        complexity.loc[a.assembler, :] = [key, dataset, n_pairs, len(a.adjM.index), int(a.adjM.sum().sum()/2)]
-    return complexity
 
 def num_nodes(a):
     return len(a.adjM.index)
 
 def num_edges(a):
-    return int(a.adjM.sum().sum()/2)
-
-def compute_nX(contigs, X):
-    lengths = np.array([len(seq) for _, seq in contigs])
-    lengths.sort()
-    lengths = lengths[::-1] # decending
-    total_bp = lengths.sum()
-    nx_bp = int(X/100 * total_bp)
-    cum_sum = 0
-    for l in lengths:
-        cum_sum += l
-        if cum_sum >= nx_bp:
-            return l
-        
-def compute_assembly_nX(asms, key, dataset, n_pairs):
-    nX = pd.DataFrame(index=asms.keys(), columns=['key', 'dataset', 'depth', 'n50', 'n90'])
-    for a in asms.values():
-        nX.loc[a.assembler, :] = [
-            key, dataset, n_pairs, compute_nX(a.contigs, 50), compute_nX(a.contigs, 90)
-        ]
-    return nX
+    return sp.tril(a.adjM.sparse.to_coo()).nnz
 
 
-def good_alignment(hit, ctg_len, min_similarity=0.98, length_epsilon=0.02, strict=True):
+def good_alignment(hit, ctg_len, min_similarity=0.98, length_epsilon=0.02, mag=False):
     """
     Checks whether the alignment is good enough to be considered where the contig derived from in the genome.
 
@@ -335,7 +436,7 @@ def good_alignment(hit, ctg_len, min_similarity=0.98, length_epsilon=0.02, stric
     alignment_length = abs(hit.r_en - hit.r_st)
     if not (lower_bound <= alignment_length <= upper_bound):
         return False
-    if strict:
+    if mag:
         min_similarity = 0.999
     max_nm = int(ctg_len * (1.0 - min_similarity))
     if hit.NM <= max_nm:
@@ -343,36 +444,36 @@ def good_alignment(hit, ctg_len, min_similarity=0.98, length_epsilon=0.02, stric
 
     return False
 
-
-
-    
-
-
-
-def align_nodes_para(aligner, g, all_alignments, dat):
+def align_nodes_para(aligner, g, mag, dat):
     idx, (name, seq) = dat
     alignments = list()
-    for hit in aligner.map(seq):  # traverse alignments
+    for hit in aligner.map(seq):  # traverse alignmentsfor y in /burg/pmg/users/ic2465/Projects/MANU_copangraph/data/CAMISIMGraphQuality/camisim_reads/yamls/*_analysis.yaml; do  sbatch --export=ALL,ANALYSIS=$y CAMISIMGraphQuality/batch_eval.sh ; done
         if g is not None and (hit.ctg != g):
             continue
-        if all_alignments or good_alignment(hit, len(seq)):
-            alignments.append(Alignment(name, hit.r_st, hit.r_en, hit.ctg, len(seq), hit.is_primary))
+        if good_alignment(hit, len(seq), mag=mag):
+            alignments.append(Alignment(name, hit.r_st, hit.r_en, hit.ctg, len(seq), hit.is_primary, paf_to_sam(f'{name}\t{len(seq)}\t' + str(hit), seq)))
     return alignments, idx
 
-def align_nodes(asm, aligner, g=None, all_alignments=True):
+def align_nodes(asm, aligner, g=None, mag=False):
     adjM, nodes = asm.adjM, asm.contigs
     alignments = list()
     unaligned_nodes = set()
-    fun = functools.partial(align_nodes_para, aligner, g, all_alignments)
-    with TPool(processes=8) as pool:
+    fun = functools.partial(align_nodes_para, aligner, g, mag)
+    with TP(max_workers=4) as pool:
         ret = pool.map(fun, enumerate(nodes))
-        for a, i in ret:
-            if len(a) == 0:
-                unaligned_nodes.add(i)
-            else:
-                alignments += a
+    for a, i in ret:
+        if len(a) == 0:
+            unaligned_nodes.add(i)
+        else:
+            alignments += a
     return alignments, unaligned_nodes
 
+def write_bed(breakpoints, outfile):
+
+    with open(outfile, 'w') as f:
+        for g, bps in breakpoints.items():
+            for bp in bps:
+                f.write(f'{g}\t{bp}\t{bp+1}\n')
 
 def compute_consensus_breakpoints(
         alignment_dict,
@@ -396,51 +497,6 @@ def compute_consensus_breakpoints(
     the consensus coordinate of a difficult to assemble region of a genome.
     """
     breakpoints_dict = defaultdict(list)
-    #def fun(data):
-    #    i, g = data
-    #    covered_region = np.full(genome_lens[i], 0, dtype=np.uint32)
-    #    breakpoints = list()
-    #    for k, (alignments, u) in alignment_dict.items():
-    #        if contigs_only and (k != 'megahit_contigs' and k != 'metaspades_contigs'):
-    #            continue
-    #        for a in alignments:
-    #            if a.genome != g:
-    #                continue
-    #            breakpoints.append(a.start)
-    #            breakpoints.append(a.end)
-    #            covered_region[a.start: a.end] += 1
-
-    #    breakpoints = np.array(breakpoints)
-    #    remaining_bps = np.full(len(breakpoints), True)
-    #    for j, bp in enumerate(breakpoints):
-    #        if (bp - window_sz < 0) or (bp + window_sz >= len(covered_region)):
-    #            remaining_bps[j] = False
-    #            continue
-    #        if not ((covered_region[bp-window_sz] == 1) and (covered_region[bp+window_sz] == 1)):
-    #            remaining_bps[j] = False
-    #    breakpoints = breakpoints[remaining_bps]
-    #    #print('breakpoints removed due to undersampling', len(remaining_bps) - sum(remaining_bps))
-    #    #print('Total breakpoints for genome', g, sum(remaining_bps))
-    #    if len(breakpoints) == 0:
-    #        return g, []
-    #    if cluster and len(breakpoints) > 1:
-    #        breakpoints = np.array(list(breakpoints)).reshape(-1, 1)  # reshape needed to work with sk-learn expected input
-    #        cluster_labels = AgglomerativeClustering(
-    #            distance_threshold=max_within_clust_dist, n_clusters=None, linkage='complete'
-    #        ).fit(breakpoints).labels_
-
-    #        # compute consensus_breakpoints
-    #        breakpoints = breakpoints.reshape(breakpoints.shape[0])  # return to series
-    #        consensus_breakpoints = [
-    #            int(average(breakpoints[cluster_labels == label])) for label in set(cluster_labels)
-    #        ]
-    #        return g, sorted(consensus_breakpoints)
-    #    else:
-    #        return g, sorted(list(breakpoints))
-    #with TPool(processes=64) as pool:
-    #    ret = pool.map(fun, enumerate(genomes), chunksize=5000)
-    #    for g, l in ret:
-    #        breakpoints_dict[g] = l
     for i, g in enumerate(genomes):
         covered_region = np.full(genome_lens[i], 0, dtype=np.uint32)
         breakpoints = list()
@@ -463,8 +519,6 @@ def compute_consensus_breakpoints(
             if not ((covered_region[bp-window_sz] == 1) and (covered_region[bp+window_sz] == 1)):
                 remaining_bps[j] = False
         breakpoints = breakpoints[remaining_bps]
-        #print('breakpoints removed due to undersampling', len(remaining_bps) - sum(remaining_bps))
-        #print('Total breakpoints for genome', g, sum(remaining_bps))
         if len(breakpoints) == 0:
             continue
         if cluster and len(breakpoints) > 1:
@@ -482,3 +536,27 @@ def compute_consensus_breakpoints(
         else:
             breakpoints_dict[g] = sorted(list(breakpoints))
     return breakpoints_dict
+
+def n50(asm):
+    if type(asm) == str:
+        if asm.endswith('.gfa'):
+            is_copan = True
+        else:
+            is_copan = False
+    
+        with open(asm) as f:
+            if is_copan:
+                data = list(e for e in ps.parse_gfa(f) if e.type == ps.GFATypes.S)
+            else:
+                data = list(ps.parse(f, ps.Fasta))
+        data = [e.seq for e in data]
+    else:
+        data = [e for _, e in asm.contigs]
+    # organize sequences by node
+    data = sorted(data, key=lambda x: len(x), reverse=True)
+    total_50 = sum(len(e) for e in data)/2
+    cum_sum= 0 
+    for e in data:
+        cum_sum += len(e)
+        if cum_sum >= total_50:
+            return len(e)
