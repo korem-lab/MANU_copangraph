@@ -2,6 +2,7 @@ import os
 import sys
 import glob
 import pandas as pd
+import argparse
 from scipy.stats import wilcoxon
 from itertools import product
 import Utils.GraphQualityPlotting as plot
@@ -11,6 +12,17 @@ RESULTS_PATH = "./data/CAMISIMGraphQuality/camisim_reads/evaluation/corrected_aa
 ASM = 'megahit'
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--RESULTS_PATH", required=True)
+    parser.add_argument("-a", "--ASM", required=True)
+    args = parser.parse_args()
+    params = vars(args)
+    RESULTS_PATH=params['RESULTS_PATH']
+    ASM=params['ASM']
+    print(RESULTS_PATH)
+    print(ASM)
+    print('-----------')
     
     quality_df = glob.glob(os.path.join(RESULTS_PATH, f'*{ASM}*_quality.csv'))
     #complexity_df = glob.glob(os.path.join(RESULTS_PATH, f'*{ASM}*_complexity.csv'))
@@ -30,12 +42,12 @@ if __name__ == '__main__':
     #wcox_cov = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cov_F-score_wcox.csv'),index_col=0) 
     #wcox_cnx = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_wcox.csv'), index_col=0) 
     ## Plot graph quality metircs by depth
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_F-score', quality_df, metric='cnx_F-score', stats=None)
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_F-score', quality_df, metric='cov_F-score', stats=None)
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_precision', quality_df, metric='cnx_precision', stats=None)
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_precision', quality_df, metric='cov_precision', stats=None)
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cnx_recall', quality_df, metric='cnx_recall', stats=None)
-    plot.graph_quality_by_depth(RESULTS_PATH, f'{ASM}_cov_recall', quality_df, metric='cov_recall', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cnx_F-score', quality_df, metric='cnx_F-score', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cov_F-score', quality_df, metric='cov_F-score', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cnx_precision', quality_df, metric='cnx_precision', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cov_precision', quality_df, metric='cov_precision', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cnx_recall', quality_df, metric='cnx_recall', stats=None)
+    plot.graph_quality_by_depth(RESULTS_PATH, ASM, f'{ASM}_cov_recall', quality_df, metric='cov_recall', stats=None)
 
     ## compute Mann-Whitney U
     #scores = pd.read_csv(os.path.join(RESULTS_PATH, 'megahit_cnx_F-score_scores.csv'))

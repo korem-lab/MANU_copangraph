@@ -15,7 +15,7 @@ figure(figsize=(3, 3))
 
 ABD_THRESH = 0.05
 
-def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=None, hue_val='assembler', base=2, stats=None):
+def graph_quality_by_depth(out_dir, asm, fname, quality_df, metric=None, filter_on=None, hue_val='assembler', base=2, stats=None):
 
     # ensure inputs are valid
     plt.clf()
@@ -52,17 +52,17 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
             stats.loc[len(stats), :] = [tool_a, tool_b, depth, res.pvalue, res.statistic, 'two-sided']
         except ValueError:
             stats.loc[len(stats), :] = [tool_a, tool_b, depth, 1, 0, 'greater']
-    stats.to_csv(os.path.join(out_dir, f'megahit_{metric}_wcox.csv'))
+    stats.to_csv(os.path.join(out_dir, f'{asm}_{metric}_wcox.csv'))
     # Plot line graph
     if filter_on:
         scores = scores.loc[scores.assembler == filter_on,:]
     ax = sns.lineplot(x=(scores['depth'].astype(np.float64)), y=scores['value'], hue=scores[hue_val],legend=True, errorbar='sd')
 
-    if stats is not None:
+    if len(stats) > 0:
         #y_max = 0.5 if 'cnx' in fname else 0.7
         y_pos = scores.groupby(['assembler', 'depth']).apply(lambda x: x.value.mean() + x.value.std()).max()
-        coldict = {'megahit_contigs':'green', 'megahit_graph':'red', 'mcvl':'orange'}
-        space_dict = {'megahit_contigs':0.00, 'megahit_graph':0.025, 'mcvl':0.05}
+        coldict = {f'{asm}_contigs':'green', f'{asm}_graph':'red', 'mcvl':'orange'}
+        space_dict = {f'{asm}_contigs':0.00, f'{asm}_graph':0.025, 'mcvl':0.05}
         stats = stats.loc[stats.hyp == 'greater',:]
         for i in stats.index:
             tool = stats.loc[i, 'tool_b']
@@ -180,8 +180,8 @@ def ss_quality(out_dir, asm, metric, ss_quality, include_unmapped=True):
     #    ax=ax
     #)
     scores = scores.loc[scores.coasm_sz == 9, :]
-    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'], palette='tab10')
-    sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
+    sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', f'{asm}_contigs', f'{asm}_graph'], palette='tab10')
+    sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', f'{asm}_contigs', f'{asm}_graph'])
     plt.title(f'{metric}', fontsize=10)
     plt.ylim((0, scores['value'].max() + 0.4))
     plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}_labels.pdf'), bbox_inches='tight', dpi=1400)
