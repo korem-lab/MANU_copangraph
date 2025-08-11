@@ -73,6 +73,6 @@ if __name__ == '__main__':
     num_reads = num_reads.astype(float)
     gfa_file = yml['gfa_file']
     nf, len_filtered = compute_abnd_mat(gfa_file, idx_stats_dir, map_samples, num_reads, short_contig)
-    nf.to_pickle(os.path.join(idx_stats_dir, gfa_file.replace('.gfa', '') + '.abnd_mat.pkl'))
-    len_filtered.to_pickle(os.path.join(idx_stats_dir, gfa_file.replace('.gfa', '') + '.abnd_mat_filtered.pkl'))
+    nf.to_pickle(os.path.join(idx_stats_dir, os.path.basename(gfa_file).replace('.gfa', '') + '.abnd_mat.pkl'))
+    len_filtered.to_pickle(os.path.join(idx_stats_dir, os.path.basename(gfa_file).replace('.gfa', '') + '.abnd_mat_filtered.pkl'))
     

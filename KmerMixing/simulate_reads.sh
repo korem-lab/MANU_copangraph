@@ -3,7 +3,7 @@
 #SBATCH --time=0:10:00
 #SBATCH --mem=2G
 #SBATCH --cpus-per-task=1
-#SBATCH --exclude=m005
+#SBATCH --exclude=m002,m006
 #SBATCH --account pmg
 #SBATCH --output=/burg/pmg/users/ic2465/Projects/MANU_copangraph/KmerMixing/sim-reads-%x-%j.log
 
@@ -21,6 +21,8 @@ if [[ $FASTA == *"9000"* ]]; then
 	gen=9000
 elif [[ $FASTA == *"5000"* ]]; then
 	gen=5000
+elif [[ $FASTA == *"1000"* ]]; then
+	gen=1000
 else
 	echo "NOT A GEN"
 fi

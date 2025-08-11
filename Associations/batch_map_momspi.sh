@@ -7,8 +7,8 @@
 #SBATCH --exclude=m013
 #SBATCH --output=map-%x-%j.log
 reads_dir=/manitou/pmg/projects/korem_lab/Projects/MOMSPI_COPAN_PREDICTION/HGF
-contigs_dir=/manitou/pmg/projects/korem_lab/Projects/MOMSPI_COPAN_PREDICTION/EXT/megahit
-final_dir=/manitou/pmg/projects/korem_lab/Projects/MOMSPI_COPAN_PREDICTION/MAP
+contigs_dir=/manitou/pmg/projects/korem_lab/Projects/MOMSPI_COPAN_PREDICTION/EXT_NEW/megahit
+final_dir=/manitou/pmg/projects/korem_lab/Projects/MOMSPI_COPAN_PREDICTION/MAP_NEW
 # move to pmglocal
 r1=$reads_dir/${SAMPLE}_R1.fastq.gz 
 r2=$reads_dir/${SAMPLE}_R2.fastq.gz
