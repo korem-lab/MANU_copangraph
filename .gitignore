@@ -3,9 +3,14 @@ data
 CAMISIMGraphQuality/scripts
 *.log
 *__pycache__*
+Predictions/*.sh
+Predictions/*\.e*
+Predictions/*\.o*
 SequenceDivergence/input_yamls/
 Utils/align
 spacegraphcats
 *.gz
 inputs
 outputs
+*.csv
+*.pdf

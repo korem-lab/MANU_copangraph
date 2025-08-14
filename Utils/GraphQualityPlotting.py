@@ -67,13 +67,13 @@ def graph_quality_by_depth(out_dir, fname, quality_df, metric=None, filter_on=No
         for i in stats.index:
             tool = stats.loc[i, 'tool_b']
             pval = stats.loc[i, 'pval']
-            if pval >= 0.05:
+            if pval >= 0.001 or ('cov' in metric and tool == 'megahit_graph'):
                 symbol = ''
             else:
                 symbol = '*'
             depth = int(stats.loc[i, 'depth'])
-            ax.text(depth, y_pos + space_dict[tool], symbol, color=coldict[tool])
-        ax.set_ylim(top=y_pos+0.1)
+            ax.text(depth, y_pos + space_dict[tool], symbol, color=coldict[tool], horizontalalignment='center')
+        ax.set_ylim(top=y_pos+(0.1 if 'cnx' in metric else 0.15))
 
     # put ticks at exact measurement position 
     ax.set_xlabel('Read pairs')
@@ -183,7 +183,7 @@ def ss_quality(out_dir, asm, metric, ss_quality, include_unmapped=True):
     sns.boxplot(x=scores.assembler, y=scores['value'], showfliers=False, order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'], palette='tab10')
     sns.stripplot(x=scores.assembler, y=scores['value'], legend=False, dodge=True, color='black', order=['copangraph', 'metacarvel', 'megahit_contigs', 'megahit_graph'])
     plt.title(f'{metric}', fontsize=10)
-    plt.ylim((None, scores['value'].max() + 0.2))
+    plt.ylim((0, scores['value'].max() + 0.4))
     plt.savefig(os.path.join(out_dir, f'{asm}_ss_{metric}_labels.pdf'), bbox_inches='tight', dpi=1400)
 
     frame1 = plt.gca()

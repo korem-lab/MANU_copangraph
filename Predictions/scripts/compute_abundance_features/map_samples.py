@@ -4,6 +4,7 @@ import glob
 from subprocess import run
 import parse_seq as ps
 import pandas as pd
+import gzip
 import numpy as np
 import yaml
 import shutil
@@ -41,18 +42,19 @@ def get_num_nodes(gfa_file):
 
 
 def process_sample(x):
-        s, reads_dir, threads, out_dir = x
-        s_1 = os.path.join(reads_dir, f'{s}_R1.fastq.gz')
-        s_2 = os.path.join(reads_dir, f'{s}_R2.fastq.gz')
+        s, reads_dir, threads, out_dir, ext = x
+        s_1 = os.path.join(reads_dir, f'{s}_{ext}1.fastq.gz')
+        s_2 = os.path.join(reads_dir, f'{s}_{ext}2.fastq.gz')
         assert os.path.isfile(s_1) and os.path.isfile(s_2)
         print('mapping', s_1, s_2)
         run(f'bowtie2 --threads {threads} -x {out_dir}/idx -1 {s_1} -2 {s_2} | samtools view -b -o {out_dir}/{s}_mapping.bam', shell=True)
-        run(f'samtools sort -m 1G --threads {threads//2} -o {out_dir}/{s}_sorted_mapping.bam {out_dir}/{s}_mapping.bam', shell=True)
+        run(f'samtools sort -m 1G --threads {threads} -o {out_dir}/{s}_sorted_mapping.bam {out_dir}/{s}_mapping.bam', shell=True)
         run(f'samtools index --threads {threads} -o {out_dir}/{s}_sorted_mapping.bai {out_dir}/{s}_sorted_mapping.bam', shell=True)
         r = run(f'samtools idxstats {out_dir}/{s}_sorted_mapping.bam > {out_dir}/{s}_idxstats.csv', shell=True)
+        run(f'rm {out_dir}/{s}_sorted_mapping.bam {out_dir}/{s}_mapping.bam', shell=True)
         return r.returncode
 
-def map_sample(gfa_file, contigs_dir, reads_dir, graph_samples, map_samples, out_dir, num_reads_series, threads=1):
+def map_sample(gfa_file, contigs_dir, reads_dir, graph_samples, map_samples, out_dir, num_reads_series, threads_per_worker, workers, ext='R'):
     """
      gfa_file: a copangraph made from samples in the graph_samples list
     """
@@ -72,22 +74,13 @@ def map_sample(gfa_file, contigs_dir, reads_dir, graph_samples, map_samples, out
     ## construct index
     print('Constructing index.')
     if (len(glob.glob(f'{out_dir}/idx*')) == 0):
-        run(f'bowtie2-build --threads {threads*2} {cntg_out} {out_dir}/idx', shell=True)
+        run(f'bowtie2-build --threads {threads_per_worker} {cntg_out} {out_dir}/idx', shell=True)
     else:
         print("Index exists... will not recompute")
 
     # construct depth profiles for the test samples
-    with ProcessPoolExecutor(max_workers=4) as ex:
-        ex.map(process_sample, zip(map_samples, [reads_dir]*len(map_samples), [threads]*len(map_samples), [out_dir]*len(map_samples)))
-        # map reads
-    #for s in [e for e in map_samples if 'SRR6744867' == e]:
-    #    s_1 = os.path.join(reads_dir, f'{s}_R1.fastq.gz')
-    #    s_2 = os.path.join(reads_dir, f'{s}_R2.fastq.gz')
-    #    print('mapping', s_1, s_2)
-    #    run(f'bowtie2 --threads {threads} -x {out_dir}/idx -1 {s_1} -2 {s_2} | samtools view -b -o {out_dir}/{s}_mapping.bam', shell=True)
-    #    run(f'samtools sort -m 1G --threads {threads//2} -o {out_dir}/{s}_sorted_mapping.bam {out_dir}/{s}_mapping.bam', shell=True)
-    #    run(f'samtools index --threads {threads} -o {out_dir}/{s}_sorted_mapping.bai {out_dir}/{s}_sorted_mapping.bam', shell=True)
-    #    run(f'samtools idxstats {out_dir}/{s}_sorted_mapping.bam > {out_dir}/{s}_idxstats.csv', shell=True)
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        ex.map(process_sample, zip(map_samples, [reads_dir]*len(map_samples), [threads_per_worker]*len(map_samples), [out_dir]*len(map_samples), [ext]*len(map_samples)))
 
     # make count matrix
     idx_dfs = [pd.read_csv(os.path.join(out_dir, f'{e}_idxstats.csv'), delimiter='\t', header=None, index_col=0).sort_index() for e in map_samples]
@@ -95,7 +88,9 @@ def map_sample(gfa_file, contigs_dir, reads_dir, graph_samples, map_samples, out
         assert(all(idx_dfs[i].index == idx_dfs[i+1].index))
     cnts = pd.concat((e.loc[:, [2,3]].sum(axis=1) for e in idx_dfs), axis=1)
     cnts.columns = map_samples
-    cnts['length'] = idx_dfs[0].loc[:, 1]  # get lengths
+    length = idx_dfs[0].loc[:,1]
+    cnts = cnts.div((length/1e3), axis=0)  # get counts per kbp 
+    cnts = cnts.div((num_reads_series/1e6), axis=1) # divide by per-milion reads to get rkbm
     idx_dfs = list() 
     print(cnts)
 
@@ -107,15 +102,10 @@ def map_sample(gfa_file, contigs_dir, reads_dir, graph_samples, map_samples, out
         for r in ps.parse_gfa(f):
             if r.type != ps.GFATypes.S:
                 continue
-            key = f'{graph_samples[r.sample_name]}:{r.contig_name}'
-            clen = cnts.loc[key, 'length']
-            if clen < MIN_CONTIG_500:
+            key = f'{r.sample_name}:{r.contig_name}'
+            if length[key] < MIN_CONTIG_500:
                 short_500[int(r.nid)-1] = True 
-            scale = abs(r.rb - r.lb) / clen
-            node_features[:, int(r.nid)-1] += cnts.loc[key, map_samples].values * scale
-
-    # library size normalization
-    node_features = node_features / num_reads_series[map_samples].values[:, np.newaxis]
+            node_features[:, int(r.nid)-1] += cnts.loc[key, map_samples].values
     node_features = pd.DataFrame(node_features, index=map_samples, columns=range(1, num_nodes+1))
 
     # remove nodes deriving from short contigs
@@ -129,15 +119,16 @@ if __name__ == '__main__':
     with open(yml) as f:
         yml = yaml.safe_load(f)
     os.makedirs(yml['out_dir'], exist_ok=True)
-    shutil.rmtree(yml['scratch_dir'], ignore_errors=True)
+    #shutil.rmtree(yml['scratch_dir'], ignore_errors=True)
     os.makedirs(yml['scratch_dir'], exist_ok=True)
-    graph_samples = pd.read_csv(yml['graph_samples'], header=None)[0]
+    graph_samples = pd.read_csv(yml['graph_samples'], header=None, dtype=str)[0]
     print('num_graph_sample: ',graph_samples.shape)
-    map_samples = pd.read_csv(yml['map_samples'], header=None)[0]
+    map_samples = pd.read_csv(yml['map_samples'], header=None, dtype=str)[0]
     num_reads = pd.read_csv(yml['read_counts'], index_col=0, header=None)
     num_reads = num_reads.loc[map_samples, 1]
+    num_reads = num_reads.astype(float)
     print('map_samples: ', num_reads.shape)
-    nf, nf_s500 = map_sample(yml['gfa_file'], yml['contig_dir'], yml['read_dir'], graph_samples, map_samples, yml['scratch_dir'], num_reads, threads=8)
+    nf, nf_s500 = map_sample(yml['gfa_file'], yml['contig_dir'], yml['read_dir'], graph_samples, map_samples, yml['scratch_dir'], num_reads, threads_per_worker=yml.get('threads_per_worker', 4), workers=yml.get('workers', 1), ext=yml.get('ext', ''))
     print('total node features', nf.shape)
     print('node_features_500', nf_s500.shape)
     nf.to_pickle(os.path.join(yml['out_dir'], f'X_full.T.pkl'))
