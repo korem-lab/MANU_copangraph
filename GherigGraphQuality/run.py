@@ -8,8 +8,8 @@ import mappy as mp
 
 from Utils.AssemblyParser import Assembly
 from Utils.evaluate_assembly import \
-    align_nodes, compute_assembly_complexity, get_connectivity_metrics, \
-    get_coverage_metrics, get_top_alignments, compute_consensus_breakpoints, compute_assembly_nX
+    align_nodes, get_connectivity_metrics, \
+    get_coverage_metrics, get_top_alignments, compute_consensus_breakpoints, write_bed
 
 if __name__ == '__main__':
 
@@ -43,14 +43,6 @@ if __name__ == '__main__':
     asms = [Assembly(**v) for v in config['ASMS'].values()]
     asms = {a.assembler: a for a in asms}
 
-    # Compute complexity and nX
-    #complexity = compute_assembly_complexity(asms, key, dataset, depth)
-    #complexity.to_csv(os.path.join(out_dir, f'{run_desc}_complexity.csv'))
-    #nX = compute_assembly_nX(asms, key, dataset, depth)
-    #nX.to_csv(os.path.join(out_dir, f'{run_desc}_nX.csv'))
-    #print(complexity)
-    #print(nX)
-
     # Build a minimap alignment object indexing the metagenomic reference genomes
     aligner = mp.Aligner(reference)
 
@@ -62,7 +54,7 @@ if __name__ == '__main__':
     alignments_dict = dict()
     for asm_name, asm in asms.items():
         print('Computing alignments for assembly', asm_name, '...')
-        alignments, unaligned_contigs = align_nodes(asm, aligner, all_alignments=False)
+        alignments, unaligned_contigs = align_nodes(asm, aligner, mag=True)
         alignments_dict[asm_name] = (alignments, unaligned_contigs)
 
     print('Computing breakpoints...')
@@ -73,6 +65,8 @@ if __name__ == '__main__':
         max_within_clust_distance,
         window_size
     )
+
+    #write_bed(breakpoint_dict, os.path.join(out_dir, f'{run_desc}_breakpoints.bed'))
 
     # Run evaluation per assembler
     stats_dfs = list()
@@ -95,11 +89,20 @@ if __name__ == '__main__':
 
         # get connectivity metrics
         print('Computing connectivity metrics')
-        cnx_metric_records = get_connectivity_metrics(
+        cnx_metric_records, tp_bed_records, fn_bed_records = get_connectivity_metrics(
             asm_name, alignments, genomes, g_to_aln_idx, node_to_aln_idx, breakpoint_dict,
-            asm, asm_artifact_gap,  window_size,
-            unaligned_contig_indicies
+            #asm, asm_artifact_gap,  window_size, # MANU VERSION JUL6
+            asm, 2*window_size,  window_size,
+            unaligned_contig_indicies,
+            mode='disregard_if_any_unmapped'
         )
+
+        ## write tp and fn bed
+        #with open(os.path.join(out_dir, f'{run_desc}_tp.bed'), 'w') as f:
+        #    f.write('\n'.join(tp_bed_records))
+        #with open(os.path.join(out_dir, f'{run_desc}_fn.bed'), 'w') as f:
+        #    f.write('\n'.join(fn_bed_records))
+
 
         # Filter the alignments for the best hit per contig. Intersect all per-genome alignments with the top alignments
         # Equally good top alignments are retained

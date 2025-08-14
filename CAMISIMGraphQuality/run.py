@@ -106,7 +106,8 @@ if __name__ == '__main__':
         print('Computing connectivity metrics')
         cnx_metric_records, tp_bed_records, fn_bed_records= get_connectivity_metrics(
             asm_name, alignments, genomes, g_to_aln_idx, node_to_aln_idx, breakpoint_dict,
-            asm, asm_artifact_gap,  window_size,
+            #asm, asm_artifact_gap,  window_size, # CURRENT MANUSCRIPT Jul 6
+            asm, window_size*2,  window_size, # TESTING
             unaligned_contig_indicies, 
             mode='never_disregard_unmapped'
         )

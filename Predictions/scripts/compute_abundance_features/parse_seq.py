@@ -18,7 +18,7 @@ class GFASegment(GFA):
         self.nid = nid
         self.seq = seq
         self.info = info
-        self.sample_name = int(self.info.split(':')[3])
+        self.sample_name = self.info.split(':')[3]
         self.contig_name = self.info.split(':')[2]
         self.lb = int(self.info.split(':')[5]) 
         self.rb = int(self.info.split(':')[6]) 
