@@ -1,0 +1,5 @@
+{'steps': [['AbundanceFilter', 'FeatureSelector']],
+ 'feature_selection_method': 'lasso',
+ 'abundance_filter_threshold': [0.2],
+ 'lasso_k': [0.01, 0.05, 0.1, 0.5]
+}
