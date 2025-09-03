@@ -6,8 +6,8 @@ from collections import defaultdict
 import pandas as pd
 import mappy as mp
 
-from Utils.AssemblyParser import Assembly
-from Utils.evaluate_assembly import \
+from AssemblyParser import Assembly
+from evaluate_assembly import \
     align_nodes, get_connectivity_metrics, \
     get_coverage_metrics, get_top_alignments, compute_consensus_breakpoints, write_bed
 

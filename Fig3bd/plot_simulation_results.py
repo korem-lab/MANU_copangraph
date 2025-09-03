@@ -4,7 +4,7 @@ import glob
 import pandas as pd
 from scipy.stats import wilcoxon
 from itertools import product
-import Utils.GraphQualityPlotting as plot
+import GraphQualityPlotting as plot
 
 #RESULTS_PATH = "./data/CAMISIMGraphQuality/camisim_reads/evaluation/MANUV"
 RESULTS_PATH = "./data/CAMISIMGraphQuality/camisim_reads/evaluation/corrected_aag"

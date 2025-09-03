@@ -5,15 +5,11 @@ import sys
 from collections import defaultdict
 import pandas as pd
 import mappy as mp
-from Utils.AssemblyParser import Assembly
-from Utils.constants import depth_map
-from Utils.evaluate_assembly import \
+from AssemblyParser import Assembly
+from evaluate_assembly import \
     align_nodes, get_connectivity_metrics, \
     get_coverage_metrics, get_top_alignments, compute_consensus_breakpoints
 
-BURG = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/'
-CPN = '/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/CAMISIMGraphQuality/CPN'
-MANITOU='/manitou/pmg/projects/korem_lab/Projects/MANU_copangraph/'
 if __name__ == '__main__':
 
     if len(sys.argv) != 2:
@@ -32,7 +28,7 @@ if __name__ == '__main__':
         out_dir = config['out_dir']
         key = config['key']
         run_desc = config['run_description']
-        depth = depth_map(config['depth'][:-1])
+        depth = int(float((config['depth'][:-1]) * 10**6))
         dataset, base_asm, _ = key.split('_')
         dataset = int(dataset)
         
