@@ -12,11 +12,12 @@ RESULTS_PATH_SS = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGr
 
 CO = '9_sample'
 SS = 'ssasm_sscpg_sslr'
-
+ASM = 'megahit'
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--RESULTS_PATH", required=True)
+    parser.add_argument("-a", "--ASM", required=True)
     parser.add_argument("-co", "--COASM", required=False, default="9_sample")
     args = parser.parse_args()
     params = vars(args)
@@ -45,7 +46,7 @@ if __name__ == '__main__':
     #ss_quality.to_csv(os.path.join(RESULTS_PATH_SS, f'{SS}_quality_ALL.csv'))
     #ss_complexity.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_complexity.csv'))
     #ss_nX.to_csv(os.path.join(RESULTS_PATH, f'{SS}_all_nX.csv'))
-    co_quality.to_csv(os.path.join(RESULTS_PATH, f'{CO}_quality_ALL.csv'))
+    co_quality.to_csv(os.path.join(RESULTS_PATH, f'{CO}_{ASM}_quality_ALL.csv'))
     #co_complexity.to_csv(os.path.join(RESULTS_PATH, f'{CO}_all_complexity.csv'))
     #co_nX.to_csv(os.path.join(RESULTS_PATH, f'{CO}_all_nX.csv'))
     
@@ -65,12 +66,12 @@ if __name__ == '__main__':
     # Plot multi-sample curves
     #  Recall boxplots for 1, 3, 5, 10-sample co-assemblies 
     co_quality.loc[:, 'coasm_sz'] = co_quality.dataset.apply(lambda x: int(re.findall('([0-9]+)_sample', x)[0]))
-    plot.co_quality(RESULTS_PATH, CO, 'cov_F-score', co_quality, True)
-    plot.co_quality(RESULTS_PATH, CO, 'cov_recall', co_quality, True)
-    plot.co_quality(RESULTS_PATH, CO, 'cov_precision', co_quality, True)
-    plot.co_quality(RESULTS_PATH, CO, 'cnx_F-score', co_quality, True)
-    plot.co_quality(RESULTS_PATH, CO, 'cnx_recall', co_quality, True)
-    plot.co_quality(RESULTS_PATH, CO, 'cnx_precision', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cov_F-score', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cov_recall', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cov_precision', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cnx_F-score', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cnx_recall', co_quality, True)
+    plot.co_quality(RESULTS_PATH, ASM, 'cnx_precision', co_quality, True)
 
     # macro
     #plot.co_quality(RESULTS_PATH, CO, 'cov_F-score', co_quality)
