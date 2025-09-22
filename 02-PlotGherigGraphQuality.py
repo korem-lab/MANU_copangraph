@@ -6,35 +6,28 @@ import pandas as pd
 import Utils.GraphQualityPlotting as plot
 import argparse
 
-RESULTS_PATH = "/manitou/pmg/projects/korem_lab/Projects/MANU_copangraph/GherigGraphQuality/coassemblies"
-#RESULTS_PATH = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/mmmbp_all_edgesync"
-RESULTS_PATH = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/corrected_aag"
-#RESULTS_PATH_SS = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/subgraph_analysis/MANUSCRIPT_VERSION/"
+RESULTS_PATH = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/mmmbp_all_edgesync"
 RESULTS_PATH_SS = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/subgraph_analysis/corrected_aag"
 
 
-CO = 'coasm_cocpg_alllr'
-CO = 'coassembly_analysis'
+CO = '9_sample'
 SS = 'ssasm_sscpg_sslr'
 
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("-r", "--RESULTS_PATH", required=True)
-    parser.add_argument("-a", "--ASM", required=True)
-    parser.add_argument("-co", "--COASM", required=False, default="")
-    parser.add_argument("-ss", "--SS", required=False, default="")
+    parser.add_argument("-co", "--COASM", required=False, default="9_sample")
     args = parser.parse_args()
     params = vars(args)
     RESULTS_PATH=params['RESULTS_PATH']
-    ASM=params['ASM']
     CO=params['COASM']
-    SS=params['SS']
     
     #ss_quality = glob.glob(os.path.join(RESULTS_PATH_SS, f'*{SS}*_quality.csv'))
     #ss_complexity = glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_complexity.csv'))
     #ss_nX= glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_nX.csv'))
-    co_quality = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_quality.csv'))
+    os.chdir(RESULTS_PATH)
+    co_quality = glob.glob('*_quality.csv')
     #print(co_quality)
     #co_complexity = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_complexity.csv'))
     #co_nX = glob.glob(os.path.join(RESULTS_PATH, f'*{CO}*_nX.csv'))
