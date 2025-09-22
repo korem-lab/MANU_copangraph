@@ -4,6 +4,7 @@ import re
 import glob
 import pandas as pd
 import Utils.GraphQualityPlotting as plot
+import argparse
 
 RESULTS_PATH = "/manitou/pmg/projects/korem_lab/Projects/MANU_copangraph/GherigGraphQuality/coassemblies"
 #RESULTS_PATH = "/burg/pmg/users/ic2465/Projects/MANU_copangraph/data/GherigGraphQuality/MAG_results/mmmbp_all_edgesync"
@@ -17,6 +18,18 @@ CO = 'coassembly_analysis'
 SS = 'ssasm_sscpg_sslr'
 
 if __name__ == '__main__':
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--RESULTS_PATH", required=True)
+    parser.add_argument("-a", "--ASM", required=True)
+    parser.add_argument("-co", "--COASM", required=False, default="")
+    parser.add_argument("-ss", "--SS", required=False, default="")
+    args = parser.parse_args()
+    params = vars(args)
+    RESULTS_PATH=params['RESULTS_PATH']
+    ASM=params['ASM']
+    CO=params['COASM']
+    SS=params['SS']
     
     #ss_quality = glob.glob(os.path.join(RESULTS_PATH_SS, f'*{SS}*_quality.csv'))
     #ss_complexity = glob.glob(os.path.join(RESULTS_PATH, f'*{SS}*_complexity.csv'))
