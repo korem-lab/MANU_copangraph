@@ -28,7 +28,7 @@ if __name__ == '__main__':
         run_desc = config['run_description']
         key = config['key']
         dataset = config['dataset']
-        depth = -1
+        depth = config['depth']
         
     # make out_dir
     if not os.path.exists(out_dir):
