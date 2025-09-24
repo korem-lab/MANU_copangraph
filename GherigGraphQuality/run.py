@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
         # combine records and add additional metadata
         all_records = cnx_metric_records + cov_metric_records
-        all_records = [{**e, 'key':key, 'dataset':dataset, 'depth': depth} for e in all_records]
+        all_records = [{**e, 'key':key, 'dataset':dataset, 'depth': depth[:-1]} for e in all_records]
 
         # convert to table
         df = pd.DataFrame().from_records(all_records)
