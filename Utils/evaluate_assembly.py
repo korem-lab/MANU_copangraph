@@ -501,7 +501,7 @@ def compute_consensus_breakpoints(
         covered_region = np.full(genome_lens[i], 0, dtype=np.uint32)
         breakpoints = list()
         for k, (alignments, u) in alignment_dict.items():
-            if contigs_only and (k != 'megahit_contigs' and k != 'metaspades_contigs'):
+            if contigs_only and (k != 'megahit_contigs' and k != 'metaspades_contigs' and k != 'bcalm_contigs'):
                 continue
             for a in alignments:
                 if a.genome != g:
