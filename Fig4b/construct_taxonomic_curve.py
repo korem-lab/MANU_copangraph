@@ -100,18 +100,10 @@ def plot_unlabelled_version(ax, name, tight_layout=True):
 
 if __name__ == '__main__':
 
-    #all_alns = get_alns()
-    #alpha_divs = compute_alpha_divs(all_alns)
-    #alpha_divs.to_csv(os.path.join(TAXADIR, 'alpha_divs.csv'))
-    #all_alns.to_csv(os.path.join(TAXADIR, 'all_alns.csv'))
-
-    alpha_divs = pd.read_csv(os.path.join(TAXADIR, 'alpha_divs.csv'))
+    alpha_divs = pd.read_csv(os.path.join(TAXADIR, 'alpha_divs.csv'), dtype={'sd':str})
     all_alns = pd.read_csv(os.path.join(TAXADIR, 'all_alns.csv'), index_col=0)
     plot_dat = pd.melt(alpha_divs.reset_index(), value_vars=['alpha_div_sp', 'alpha_div_gn', 'alpha_div_fm'], id_vars=['node', 'sd'])
     plot_dat.sd = plot_dat.sd.apply(lambda x: float(f'0.{x}'))
-
-
-    plot_dat.loc[(plot_dat.sd == 0.1) & (plot_dat.variable == 'alpha_div_fm'),:]['value'].replace(-np.inf, np.nan).dropna().std()
 
     plt.figure(figsize=(4,4))
     ax = sns.lineplot(x=plot_dat.sd, y=plot_dat.value, hue=plot_dat.variable)

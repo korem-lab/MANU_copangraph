@@ -12,7 +12,7 @@ CLEAN_FIG = True
 STUDY = 'ACU_VRE'
 FEATURES = ['copan', 'spacegraphcats', 'mOTUs', 'humann', 'clinical']
 COLORS = ['tab:blue', 'tab:purple', 'tab:orange', 'tab:green', 'tab:red']  # colors for the plot
-LABELS = ['Copangraph', 'spacegraphcats', 'mOTUs3', 'HUMAnN3', 'Clinical']  # what is shown on the plot. $\mathbf{*}$ for significance (humann, except in MOMS-PI250)
+LABELS = ['Copangraph', 'spacegraphcats', 'mOTUs3', 'HUMAnN3', 'Clinical']  
 
 def load(pred, ignore=True):
     if isinstance(pred,str):
@@ -75,7 +75,7 @@ def main():
     src_files = []
     for feature in FEATURES:
         if NESTED:
-            filename = find_pickle_filename(feature) # f"{SRC_DIR}/{STUDY}_{feature}_nest.pkl"
+            filename = find_pickle_filename(feature) 
             if not os.path.exists(filename):
                 raise FileNotFoundError(f"File {filename} does not exist.")
             src_files.append(filename)

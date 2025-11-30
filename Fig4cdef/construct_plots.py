@@ -63,7 +63,7 @@ plt.savefig(name, dpi=1400, bbox_inches='tight')
 plot_unlabelled_version(ax, name, tight_layout=False)
 
 print('reading mix records')
-ms_records = glob.glob('../data/Fig4cdef/*multisample_record.csv')
+ms_records = glob.glob('../data/Fig4cdef/*multigenome_record.csv')
 ms_records = pd.concat(pd.read_csv(e) for e in ms_records)
 ms_records.rename({'param':'parameter'}, axis=1, inplace=True)
 ms_records.sort_values(by=[ 'assembler', 'parameter'], inplace=True)

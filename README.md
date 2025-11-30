@@ -53,6 +53,10 @@
 | `./data/Fig3efgh/assembly_evaluation/` | `<sample>_quality.csv` files output by `run_real_eval.py`. Contains pdfs used in manuscript (`ss_cov_F-score_labels.pdf`, and `ss_cnx_F-score_labels.pdf`, Figure 3g, 3h, respectively). |
 |--|--|
 | **Fig4a** | **Code and data to plot number of copangraph nodes as a function of the homology threshold and mean ANI of a population of related genomes. ** |
+| `Fig4a/genome_simulation_code.ipynb` | Notebook with complete analysis. Constructs
+genomes populations with bacmeta configs specified in notebook. Uses FastANI to calculate
+the relationship between bacmeta generation and ANI. Plots copangraph complexity of copangraphs built on these populations as a function of sequence divergence and ANI.|
+| `./data/Fig4a/bacmata_sims` | bacmeta simulated genomes in fasta format. FastANI calculations between genomes. Copangraphs constructed over bacterial populations. |
 |--|--|
 | **Fig4b** | **Code and data to plot taxonomic richness of nodes as a function of homology threshold** |
 | `Fig4b/construct_taxonomy_curve.py` | Code to plot the (log) of the taxonomic richness as a function of homology threshold for the simulated samples. Takes as input: 1) the `<sample>_out` CAMISIM simulated directories, which contain taxonomic information required to calculate richness; 2) BLAST records of all contigs agains all reference genomes for each metagenomic samples, which is requires to calculate which contigs derive from which genomes; 3) Copangraph fasta files, describing which contig intervals belong to which nodes. |
@@ -85,30 +89,69 @@
 | **Fig5** | **Code and data to quantify resource utilization** |
 | `Fig5/construct_plots.py` | Plotting code to construct Figure 5a,b. Takes as input `resource_dat.csv`. |
 | `./data/Fig5/resource_dat.csv` | Memory and runtime to process each sample with MEGAHIT, metaSPAdes, or copangraph |
+| **Fig6abcdef** | **Code and data for preterm birth and colorectal cancer distance calcualtions** |
 |--|--|
-|**Fig6b** | **Code and data for VRE persistence prediction**|
-| `plot_auroc.py` | Plot Curves for Figure 6b. |
-| `./data/Fig6b/clinical.prediction.pkl` | Contains models, performance, and hyperparameter choices for models predicting VRE colonization from clinical features. |
-| `./data/Fig6b/copan.prediction.pkl` | Same as above but for models prediction from copangraph features. |
-| `./data/Fig6b/motus.prediction.pkl` | Same as above but for mOTUs3 features. |
-| `./data/Fig6b/humann.prediction.pkl` | Same as above but for HumANN3 features. |
-| `./data/Fig6b/spacegraphcats.prediction.pkl` | Same as above but for spacegraphcats features. |
-| `./data/Fig6b/copan_features.csv` | Copan features used for prediction. |
-| `./data/Fig6b/motus_features.csv` | mOTUs3 features used for prediction. |
-| `./data/Fig6b/humann_features.csv` | HUMANn3 features used for prediction. |
-| `./data/Fig6b/clincal_features.csv` | clinical features used for prediction. |
-| `./data/Fig6b/spacegraphcats_features.csv` | Spacegraphcats features used for prediction. |
-| `./data/Fig6b/spaceagraphcats_raw` | Spacegraphcats raw output used to construct `spacegraphcats_features.csv`. |
+| `Fig6abcdef/compute_abundance_matrix.py` | Computes an RPKM abundance matrix from idxstats files, sample reads mapping counts, and copangraph gfa files. Files are present in `./data/Fig6abcdef`. |
+| `Fig6abcdef/parse_seq_copangraph.gfa` | Auxiliary file to compute abundance.|
+| `Fig6abcdef/plot_Fig6abc.py`| code to calculate and plot distances from copangraph RPKM abundance and mOTUs3 taxonomic abundance for the colorectal cancer dataset. |
+| `Fig6abcdef/plot_Fig6def.py`| code to calculate and plot distances from copangraph RPKM abundance and mOTUs3 taxonomic abundance for the preterm birth analysis. |
+|`./data/Fig6abcdef/momspi/*.stats.csv`. idx stats files of each momspi sample's reads mapped to its contigs. |
+|`./data/Fig6abcdef/momspi/*.gfa`. Copangraphs of momspi dataset. |
+|`./data/Fig6abcdef/momspi/*.abund_mat.csv`. copangraph-derived RPKM matrices of mompsi dataset. |
+|`./data/Fig6abcdef/momspi/Labels.csv`. Preterm or full term birth labels for each sample. |
+|`./data/Fig6abcdef/momspi/ReadCounts.csv`. Number of paired end for each momspi sample after quality control, human and phix genome filtering. |
+|`./data/Fig6abcdef/momspi/mOTUs.csv`. mOTUs3 vectors for each sample. |
+|`./data/Fig6abcdef/crc/*.stats.csv`. idx stats files of each colorectal cancer dataset's sample's reads mapped to its contigs. |
+|`./data/Fig6abcdef/crc/*.gfa`. Copangraphs of colorectal cancer dataset. |
+|`./data/Fig6abcdef/crc/*.abund_mat.csv`. copangraph-derived RPKM matrices of colorectal cancer dataset. |
+|`./data/Fig6abcdef/crc/Labels.csv`. Cancer or non-cancer labels for each sample. |
+|`./data/Fig6abcdef/crc/ReadCounts.csv`. Number of paired end for each colorectal cancer dataset sample after quality control, human and phix genome filtering. |
+|`./data/Fig6abcdef/crc/mOTUs.csv`. mOTUs3 vectors for each sample. |
 |--|--|
-|**Fig6cegh** | **Code and data for comparative metagenomics with copangraph**|
-| `./data/Fig6cegh/vre_copangraph_*.color.csv` | Persistence, Clearance label counts for each subgraph centered on nodes 25927, 314855, 38010, 93712. |
-| `./data/Fig6cegh/vre_copangraph_*.gff` | Prokka annotations for each subgraph centered on nodes 25927, 314855, 38010, 93712. |
-| `./data/Fig6cegh/vre_copangraph_*.gfa` | Subgraphs centered on nodes 25927, 314855, 38010, 93712. |
-| `./data/Fig6cegh/vre_copangraph_*.fasta` | Fasta elements of subgraphs centered on nodes 25927, 314855, 38010, 93712. |
-| `./data/Fig6cegh/vre_copangraph_314855.proviruses.subgraph.bed` | Nodes classified as within complete proviral elements by gNOMAD. |
-| `./data/Fig6cegh/vre_copangraph_314855.proviral_genes.subgraph.bed` | Nodes classified as containing proviral genomes by gNOMAD. |
-| `./data/Fig6cegh/*_nodes.png` | PNG file of subgraphs from Bandage visualization. |
-| `./data/Fig6cegh/*.pdf` | PDFs of annotated subgraphs. |
-|**Fig6df**| **Code and data for VRE-isolate - copangraph bubble analysis** |
+| **Fig6gh** | **Code and data for preterm birth and colorectal cancer prediction tasks** |
+|--|--|
+|`Fig6gh/plot_auroc_Fig6g.py`| Plot Curves for Figure 6g.
+|`Fig6gh/plot_auroc_Fig6h.py`| Plot Curves for Figure 6h.
+|`./data/Fig6gh/momspi/humann.prediction.pkl`| Contains models, performance, and hyperparameter choices for models predicting preterm birth from HUMAnN3 features.
+|`./data/Fig6gh/momspi/copangraph.prediction.pkl`| Same, but for copangraph-derived features.
+|`./data/Fig6gh/momspi/mOTUs.prediction.pkl`| Same, but for mOTUs3 features.
+|`./data/Fig6gh/momspi/humann.features.csv`| HUMAnN3 features used for prediction.
+|`./data/Fig6gh/momspi/copan.features.csv`| Copangraph-derived features used for prediction.
+|`./data/Fig6gh/momspi/mOTUs.features.csv`| mOTUs3 features used for prediction.
+|`./data/Fig6gh/crc/humann.prediction.pkl`| Contains models, performance, and hyperparameter choices for models predicting colorectal cancer from HUMAnN3 features.
+|`./data/Fig6gh/crc/copangraph.prediction.pkl`| Same, but for copangraph-derived features.
+|`./data/Fig6gh/crc/mOTUs.prediction.pkl`| Same, but for mOTUs3 features.
+|`./data/Fig6gh/crc/humann.features.csv`| HUMAnN3 features used for prediction.
+|`./data/Fig6gh/crc/copan.features.csv`| Copangraph-derived features used for prediction.
+|`./data/Fig6gh/crc/mOTUs.features.csv`| mOTUs3 features used for prediction.
+|--|--|
+|**Fig7b** | **Code and data for VRE persistence prediction**|
+| `Fig7b/plot_auroc.py` | Plot Curves for Figure 7b. |
+| `./data/Fig7b/clinical.prediction.pkl` | Contains models, performance, and hyperparameter choices for models predicting VRE colonization from clinical features. |
+| `./data/Fig7b/copan.prediction.pkl` | Same as above but for models prediction from copangraph features. |
+| `./data/Fig7b/motus.prediction.pkl` | Same as above but for mOTUs3 features. |
+| `./data/Fig7b/humann.prediction.pkl` | Same as above but for HumANN3 features. |
+| `./data/Fig7b/spacegraphcats.prediction.pkl` | Same as above but for spacegraphcats features. |
+| `./data/Fig7b/copan_features.csv` | Copan features used for prediction. |
+| `./data/Fig7b/motus_features.csv` | mOTUs3 features used for prediction. |
+| `./data/Fig7b/humann_features.csv` | HUMANn3 features used for prediction. |
+| `./data/Fig7b/clincal_features.csv` | clinical features used for prediction. |
+| `./data/Fig7b/spacegraphcats_features.csv` | Spacegraphcats features used for prediction. |
+| `./data/Fig7b/spacegraphcats_raw` | Spacegraphcats raw output used to construct `spacegraphcats_features.csv`. |
+|--|--|
+|**Fig7cegh** | **Code and data for comparative metagenomics with copangraph**|
+| `Fig7cegh/extract_subgraph_from_gfa.py` | Code to extract a subgraph of copangraph starting from a specified node. |
+| `./data/Fig7cegh/vre_copangraph_*.color.csv` | Persistence, Clearance label counts for each subgraph centered on nodes 25927, 314855, 38010, 93712. |
+| `./data/Fig7cegh/vre_copangraph_*.gff` | Prokka annotations for each subgraph centered on nodes 25927, 314855, 38010, 93712. |
+| `./data/Fig7cegh/vre_copangraph_*.gfa` | Subgraphs centered on nodes 25927, 314855, 38010, 93712. |
+| `./data/Fig7cegh/vre_copangraph_*.fasta` | Fasta elements of subgraphs centered on nodes 25927, 314855, 38010, 93712. |
+| `./data/Fig7cegh/vre_copangraph_314855.proviruses.subgraph.bed` | Nodes classified as within complete proviral elements by gNOMAD. |
+| `./data/Fig7cegh/vre_copangraph_314855.proviral_genes.subgraph.bed` | Nodes classified as containing proviral genomes by gNOMAD. |
+| `./data/Fig7cegh/*_nodes.png` | PNG file of subgraphs from Bandage visualization. |
+| `./data/Fig7cegh/*.pdf` | PDFs of annotated subgraphs. |
+|**Fig7df**| **Code and data for VRE-isolate - copangraph bubble analysis** |
+| `Fig7df/plot_vre_branch_mapping_counts.py` | Constructs barplots of the isolated strains into the copangraph subgraphs (Figure 7d,f).  |
+| `./data/stats.csv` | Barnard's exact of strain mapping contingency table.  |
+| `./data/strain_to_graph_blast_hits.csv` | Blast hits of copangraph nodes against isolates genomes.  |
 
 

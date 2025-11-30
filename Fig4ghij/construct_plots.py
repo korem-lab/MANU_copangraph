@@ -23,8 +23,8 @@ ANI = 97
 GEN=5000
 PREF_COV=f'hmlgy_panel_coverage_ANI{ANI}_gen{GEN}_'
 PREF_MULTI=f'hmlgy_panel_multigenome_ANI{ANI}_gen{GEN}_'
-OUTDIR='../data/Fig4ghij/outputs'
-cov_records = glob.glob('../data/Fig4ghij/*coverage_records.csv')
+OUTDIR='../data/Fig4ghij/outputs/'
+cov_records = glob.glob('../data/Fig4ghij/outputs/*coverage_records.csv')
 cov_records = pd.concat(pd.read_csv(e) for e in cov_records)
 cov_records.sort_values(by=['rep', 'gen', 'assembler', 'parameter', 'metric'], inplace=True)
 cov_records.reset_index(drop=True, inplace=True)
@@ -50,7 +50,7 @@ name = OUTDIR + f'{PREF_COV}_copangraph_F-score.pdf'
 plt.savefig(name, dpi=1400, bbox_inches='tight')
 plot_unlabelled_version(ax, name)
 
-ms_records = glob.glob('../data/Fig4ghij/*multisample_record.csv')
+ms_records = glob.glob('../data/Fig4ghij/outputs/*multigenome_record.csv')
 ms_records = pd.concat(pd.read_csv(e) for e in ms_records)
 ms_records.rename({'param':'parameter'}, axis=1, inplace=True)
 ms_records.sort_values(by=[ 'assembler', 'parameter'], inplace=True)
